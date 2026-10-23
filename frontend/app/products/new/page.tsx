@@ -50,6 +50,7 @@ export default function NewProductPage() {
     language: "mixed",
     days: ["Tue", "Thu", "Sat"],
     time: "20:00",
+    dates: [],
   });
 
   const canContinue =
@@ -59,7 +60,11 @@ export default function NewProductPage() {
         ? confirm.attributes.length > 0
         : step === 2
           ? schedule.platforms.length > 0 &&
-            (schedule.mode !== "weekly" || schedule.days.length > 0)
+            (schedule.mode === "launch_sequence"
+              ? schedule.dates.length === 1
+              : schedule.mode === "weekly"
+                ? schedule.days.length > 0 && schedule.dates.length === 1
+                : schedule.dates.length > 0)
           : false;
 
   const building = step === 3;
