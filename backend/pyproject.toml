@@ -9,6 +9,7 @@ dependencies = [
     "sqlalchemy>=2.0",
     "pydantic-settings>=2.0",
     "alembic>=1.13",
+    "openai>=3.37.0",
 ]
 
 [dependency-groups]
