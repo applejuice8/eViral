@@ -42,9 +42,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Reads the version from packageManager in package.json
+      # Reads the version from packageManager in frontend/package.json
+      # (the action defaults to the repo-root package.json, which doesn't
+      # exist here — that made every CI run fail at this step).
       - name: Install pnpm
         uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
 
       - name: Set up Node
         uses: actions/setup-node@v4
