@@ -12,8 +12,10 @@ pnpm install
 pnpm dev        # http://localhost:3000
 ```
 
-> Note: if the local environment blocks cleaning the default `.next` cache,
-> build into a fresh dir instead: `NEXT_DIST_DIR=.next-build pnpm build`.
+> Build output goes to `.next/` (gitignored). If `.next` ever gets stuck with a
+> stale cache that can't be cleaned, delete it (`rm -rf .next`) and rebuild —
+> or build into a throwaway dir with `NEXT_DIST_DIR=<dir> pnpm build`.
+> Remember to delete the throwaway dir afterwards; it is not gitignored.
 
 ## Screens
 
