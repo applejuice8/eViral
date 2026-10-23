@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  /* Brand — friendly violet, Buffer/Later-adjacent */
+  --color-brand-50: #f3f0ff;
+  --color-brand-100: #eae5ff;
+  --color-brand-200: #d6ccff;
+  --color-brand-300: #bda9ff;
+  --color-brand-400: #9f7fff;
+  --color-brand-500: #8353f5;
+  --color-brand-600: #6f36e8;
+  --color-brand-700: #5d27cc;
+  --color-brand-800: #4c23a6;
+  --color-brand-900: #3f2085;
+
+  /* Semantic status colors (consistent across badges, calendar, audit) */
+  --color-success-50: #ecfdf3;
+  --color-success-100: #d1fadf;
+  --color-success-600: #079455;
+  --color-success-700: #067647;
+
+  --color-warning-50: #fffaeb;
+  --color-warning-100: #fef0c7;
+  --color-warning-600: #dc6803;
+  --color-warning-700: #b54708;
+
+  --color-danger-50: #fef3f2;
+  --color-danger-100: #fee4e2;
+  --color-danger-600: #d92d20;
+  --color-danger-700: #b42318;
+
+  --color-info-50: #eff8ff;
+  --color-info-100: #d1e9ff;
+  --color-info-600: #1570ef;
+  --color-info-700: #175cd3;
+
+  --radius-card: 0.75rem;
+}
+
+:root {
+  --background: #f7f7f8;
+  --foreground: #18181b;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+/* Subtle, non-anxious indeterminate shimmer for progress */
+@keyframes ev-progress-indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+@keyframes ev-fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.ev-fade-up {
+  animation: ev-fade-up 240ms ease-out both;
+}
