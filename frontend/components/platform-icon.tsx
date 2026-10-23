@@ -1,6 +1,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import type { Platform } from "@/lib/data";
+import type { Platform } from "@/lib/api";
 
 function FacebookGlyph({ className }: { className?: string }) {
   return (
