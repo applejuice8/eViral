@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { format, parseISO } from "date-fns";
-import { CheckCheck, Pause, Rocket, XCircle, Pencil } from "lucide-react";
+import { CheckCheck, Pause, Rocket, XCircle, Pencil, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,10 +16,32 @@ import {
   validateCaption,
   type DraftState,
 } from "@/components/review/post-preview-card";
-import { aiCaption, demoCampaign, type ValidatorFlag } from "@/lib/data";
+import { aiCaption, demoCampaign, type Platform, type ValidatorFlag } from "@/lib/data";
+import { getLastBuild, parsePriceInput, type BuildEntry } from "@/lib/campaign-build";
 import { cn, formatRM } from "@/lib/utils";
 
 type OverrideMap = Partial<Record<DraftState["platform"], string>>;
+
+const LANGUAGE_LABEL: Record<BuildEntry["facts"]["language"], string> = {
+  ms: "Bahasa Melayu",
+  en: "English",
+  mixed: "Mixed BM + EN",
+};
+
+// The build screen stores the real, generated campaign (written from what
+// the owner entered in the wizard) in sessionStorage. Until hydration
+// completes we render the demo campaign; sessionStorage is client-only.
+type BuildStatus =
+  | { phase: "loading" }
+  | { phase: "demo"; reason: "no-build" | "service-failed" }
+  | { phase: "built"; entry: BuildEntry };
+
+function readBuildStatus(): BuildStatus {
+  const last = getLastBuild();
+  if (last === null) return { phase: "demo", reason: "no-build" };
+  if ("failed" in last) return { phase: "demo", reason: "service-failed" };
+  return { phase: "built", entry: last };
+}
 
 export default function ReviewPage() {
   const router = useRouter();
@@ -29,21 +51,68 @@ export default function ReviewPage() {
   const [publishedFirst, setPublishedFirst] = React.useState(false);
   const [editingShared, setEditingShared] = React.useState(false);
   const [sharedValue, setSharedValue] = React.useState(aiCaption);
+  const [status, setStatus] = React.useState<BuildStatus>({ phase: "loading" });
+  React.useEffect(() => {
+    setStatus(readBuildStatus());
+  }, []);
 
-  const drafts: DraftState[] = React.useMemo(
-    () =>
-      demoCampaign.drafts.map((d) => ({
-        ...d,
-        liveFlags: [],
-      })),
-    []
-  );
+  const buildEntry = status.phase === "built" ? status.entry : null;
 
-  // Per-platform caption overrides (a post edited on its own keeps its version
-  // even when the shared caption changes afterwards).
+  // Facts actually drive the page in build mode; demo data otherwise.
+  const campaign = buildEntry
+    ? {
+        productName: buildEntry.facts.productName,
+        price: parsePriceInput(buildEntry.facts.price),
+        note: buildEntry.facts.note.trim() ? buildEntry.facts.note.trim() : null,
+        language: buildEntry.facts.language,
+        platforms: buildEntry.facts.platforms,
+        model: buildEntry.model,
+      }
+    : {
+        productName: demoCampaign.productName,
+        price: demoCampaign.price,
+        note: demoCampaign.note ?? null,
+        language: demoCampaign.language as BuildEntry["facts"]["language"],
+        platforms: demoCampaign.drafts.map((d) => d.platform),
+        model: null as string | null,
+      };
+
+  // One draft per platform the owner picked, using the generated caption.
+  const drafts: DraftState[] = buildEntry
+    ? campaign.platforms.map((platform) => {
+        const template = demoCampaign.drafts.find((d) => d.platform === platform);
+        const generated = buildEntry.captions.find((c) => c.platform === platform);
+        return {
+          ...(template ?? demoCampaign.drafts[0]),
+          id: `b-${platform}`,
+          campaignId: "cmp_current",
+          platform,
+          caption: generated?.caption ?? aiCaption,
+          hashtags: [],
+          videoIdea: generated?.videoIdea ?? undefined,
+          liveFlags: [] as ValidatorFlag[],
+        };
+      })
+    : demoCampaign.drafts.map((d) => ({ ...d, liveFlags: [] as ValidatorFlag[] }));
+
+  // Per-platform caption overrides: with a real build, the first platform
+  // shows the shared caption and the others start from their own generated
+  // variant (tracked so the badge says "AI variant", not "Edited").
   const [overrides, setOverrides] = React.useState<OverrideMap>({});
+  const [generatedVariants, setGeneratedVariants] = React.useState<Platform[]>([]);
+  const initialised = React.useRef(false);
+  React.useEffect(() => {
+    if (!buildEntry || initialised.current) return;
+    initialised.current = true;
+    const [first, ...rest] = buildEntry.captions;
+    if (first) setSharedValue(first.caption);
+    setOverrides(
+      Object.fromEntries(rest.map((c) => [c.platform, c.caption])) as OverrideMap
+    );
+    setGeneratedVariants(rest.map((c) => c.platform));
+  }, [buildEntry]);
 
-  const price = demoCampaign.price;
+  const price = campaign.price;
   const sharedFlags = validateCaption(sharedValue, price);
 
   // Effective caption + flags per post: override wins, otherwise the shared caption.
@@ -66,6 +135,7 @@ export default function ReviewPage() {
     const draft = drafts.find((d) => d.id === id);
     if (!draft) return;
     setOverrides((o) => ({ ...o, [draft.platform]: caption }));
+    setGeneratedVariants((g) => g.filter((p) => p !== draft.platform));
   }
 
   function resetPlatformEdit(id: string) {
@@ -76,29 +146,55 @@ export default function ReviewPage() {
       delete next[draft.platform];
       return next;
     });
+    setGeneratedVariants((g) => g.filter((p) => p !== draft.platform));
   }
 
   const first = effective[0];
+  const overrideCount = Object.keys(overrides).length;
 
   return (
     <div className="mx-auto max-w-6xl space-y-5">
+      {/* Build fallback notice — only when a build was attempted and the
+          caption service could not be reached (not on direct navigation). */}
+      {status.phase === "demo" && status.reason === "service-failed" && (
+        <div className="flex items-start gap-2.5 rounded-lg border border-warning-200 bg-warning-50 px-4 py-3">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning-600" />
+          <p className="text-[13px] leading-relaxed text-warning-800">
+            We couldn&apos;t reach the caption service during the build, so this
+            shows the demo campaign. Start the backend (e.g.{" "}
+            <code className="rounded bg-white/70 px-1">docker compose up</code>)
+            and build again to get captions written from what you entered.
+          </p>
+        </div>
+      )}
+
       {/* Header / campaign summary */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-xl font-bold text-gray-900">
-              {demoCampaign.productName}
+              {campaign.productName}
             </h1>
             <Badge variant="default">Launch</Badge>
-            <Badge variant="muted">Mixed BM + EN</Badge>
-            <Badge variant="muted">Goal: {demoCampaign.goal}</Badge>
+            <Badge variant="muted">{LANGUAGE_LABEL[campaign.language]}</Badge>
+            {demoCampaign.goal && !buildEntry && (
+              <Badge variant="muted">Goal: {demoCampaign.goal}</Badge>
+            )}
           </div>
           <p className="mt-1 text-[13px] text-gray-500">
             {effective.length} posts ·{" "}
             {format(parseISO(drafts[0].scheduledAt), "d MMM")} –{" "}
             {format(parseISO(drafts[drafts.length - 1].scheduledAt), "d MMM")} ·{" "}
-            {formatRM(demoCampaign.price)}
-            {demoCampaign.note ? ` · ${demoCampaign.note}` : ""}
+            {formatRM(campaign.price)}
+            {campaign.note ? ` · ${campaign.note}` : ""}
+            {buildEntry?.model ? (
+              <>
+                {" · "}
+                <span className="text-gray-400">
+                  captions by {buildEntry.model}
+                </span>
+              </>
+            ) : null}
           </p>
         </div>
         {approved && (
@@ -119,7 +215,7 @@ export default function ReviewPage() {
               <ImageCompare
                 original={demoCampaign.productImageOriginal}
                 improved={demoCampaign.productImageImproved}
-                productName={demoCampaign.productName}
+                productName={campaign.productName}
               />
 
               {/* Shared AI-generated caption — edit for all */}
@@ -129,7 +225,9 @@ export default function ReviewPage() {
                     AI-generated caption
                   </p>
                   <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700">
-                    Same on all platforms
+                    {generatedVariants.length > 0
+                      ? "Shared base — some platforms have their own variant"
+                      : "Same on all platforms"}
                   </span>
                 </div>
 
@@ -143,16 +241,15 @@ export default function ReviewPage() {
                       onBlur={handleSharedCommit}
                       onKeyDown={(e) => {
                         if (e.key === "Escape") {
-                          setSharedValue(sharedValue === aiCaption ? aiCaption : sharedValue);
                           setEditingShared(false);
                         }
                       }}
                       className="text-[13px]"
                     />
                     <p className="mt-1.5 text-[11px] text-gray-400">
-                      Editing here updates all 3 posts. Posts with their own edit
-                      keep their version. Hashtags are part of the caption — type
-                      them with # and they get styled automatically.
+                      Editing here updates all {effective.length} posts. Posts with
+                      their own edit keep their version. Hashtags are part of the
+                      caption — type them with # and they get styled automatically.
                     </p>
                   </div>
                 ) : (
@@ -190,9 +287,9 @@ export default function ReviewPage() {
                   )}
                 </div>
                 <p className="mt-1.5 text-[11px] text-gray-400">
-                  {overrides && Object.keys(overrides).length > 0
-                    ? `${3 - Object.keys(overrides).length} of 3 posts follow this caption.`
-                    : "Applies to all 3 posts."}
+                  {overrideCount > 0
+                    ? `${effective.length - overrideCount} of ${effective.length} posts follow this caption.`
+                    : `Applies to all ${effective.length} posts.`}
                 </p>
               </div>
 
@@ -280,16 +377,26 @@ export default function ReviewPage() {
           </Card>
         </div>
 
-        {/* Right: 3 per-platform preview cards */}
+        {/* Right: per-platform preview cards */}
         <div className="grid gap-4 sm:grid-cols-2 lg:col-span-2">
           {effective.map(({ draft, caption, flags }) => {
             const overridden = overrides[draft.platform] !== undefined;
+            const isGenerated = generatedVariants.includes(draft.platform);
             return (
               <div key={draft.id} className="space-y-1.5">
                 {overridden && (
                   <div className="flex items-center justify-between px-1">
-                    <span className="rounded-full bg-warning-50 px-2 py-0.5 text-[11px] font-medium text-warning-700">
-                      Edited for {draft.platform} only
+                    <span
+                      className={cn(
+                        "rounded-full px-2 py-0.5 text-[11px] font-medium",
+                        isGenerated
+                          ? "bg-brand-50 text-brand-700"
+                          : "bg-warning-50 text-warning-700"
+                      )}
+                    >
+                      {isGenerated
+                        ? `AI variant for ${draft.platform}`
+                        : `Edited for ${draft.platform} only`}
                     </span>
                     <button
                       type="button"
