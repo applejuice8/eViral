@@ -22,4 +22,5 @@ COPY alembic.ini ./
 
 EXPOSE 8000
 
-CMD ["/app/.venv/bin/uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Migrate and seed (safe to re-run), then start the API.
+CMD ["sh", "-c", "/app/.venv/bin/python -m app.seed && exec /app/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000"]
