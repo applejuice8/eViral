@@ -1,5 +1,6 @@
 .env
 .env.*
+!.env.example
 .venv
 .DS_Store
 .workbuddy-ai
