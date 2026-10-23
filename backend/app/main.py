@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.adapters.llm import LLMNotConfiguredError
 from app.config import get_settings
-from app.routers import captions, health, media, products
+from app.routers import campaigns, captions, health, media, posts, products
 
 
 def create_app() -> FastAPI:
@@ -19,6 +19,8 @@ def create_app() -> FastAPI:
     app.include_router(captions.router)
     app.include_router(media.router)
     app.include_router(products.router)
+    app.include_router(campaigns.router)
+    app.include_router(posts.router)
 
     # The LLM provider dependency raises this when no API key is set.
     @app.exception_handler(LLMNotConfiguredError)

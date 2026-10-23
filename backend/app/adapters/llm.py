@@ -53,6 +53,18 @@ class LLMProvider(Protocol):
         """
         ...
 
+    def text_json(
+        self,
+        system: str,
+        user_payload: dict,
+        parse: Callable[[dict], T],
+    ) -> tuple[T, str]:
+        """Like chat_json, but walks the text model chain until `parse` passes.
+
+        Returns (parse(json), model used).
+        """
+        ...
+
 
 def _load_json(content: str | None) -> dict:
     """Parse model output, allowing for ```json fences some models add."""
@@ -88,13 +100,20 @@ class OpenRouterProvider:
         )
         self._model = settings.llm_model_text
         self._vision_models = settings.vision_models
-        # No SDK retries for vision: on a rate limit or error we move on to
-        # the next model instead.
+        self._text_models = settings.text_models
+        # No SDK retries for the model chains: on a rate limit or error we
+        # move on to the next model instead.
         self._vision_client = OpenAI(
             base_url=settings.openrouter_base_url,
             api_key=settings.openrouter_api_key,
             max_retries=0,
             timeout=90,
+        )
+        self._text_client = OpenAI(
+            base_url=settings.openrouter_base_url,
+            api_key=settings.openrouter_api_key,
+            max_retries=0,
+            timeout=150,
         )
 
     @property
@@ -159,6 +178,35 @@ class OpenRouterProvider:
                 logger.warning("Vision model %s failed: %.300s", model, exc)
                 errors.append(f"{model}: {str(exc)[:200]}")
         raise LLMError("All vision models failed. " + " | ".join(errors))
+
+    def text_json(
+        self,
+        system: str,
+        user_payload: dict,
+        parse: Callable[[dict], T],
+    ) -> tuple[T, str]:
+        errors: list[str] = []
+        content = json.dumps(user_payload, ensure_ascii=False)
+        for model in self._text_models:
+            try:
+                response = self._text_client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": system},
+                        {"role": "user", "content": content},
+                    ],
+                    response_format={"type": "json_object"},
+                    temperature=0.7,
+                    max_tokens=8000,
+                )
+                if not response.choices:
+                    raise LLMError("empty response")
+                raw = _load_json(response.choices[0].message.content)
+                return parse(raw), model
+            except (APIError, LLMError, ValidationError, ValueError) as exc:
+                logger.warning("Text model %s failed: %.300s", model, exc)
+                errors.append(f"{model}: {str(exc)[:200]}")
+        raise LLMError("All text models failed. " + " | ".join(errors))
 
 
 @lru_cache
