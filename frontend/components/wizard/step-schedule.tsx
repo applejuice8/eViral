@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 import { Input, Label } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { PlatformIcon } from "@/components/platform-icon";
-import type { Platform } from "@/lib/data";
+import type { Platform } from "@/lib/api";
 
 export interface ScheduleData {
   mode: "launch_sequence" | "weekly" | "custom";
@@ -41,14 +41,14 @@ const MODES = [
     id: "launch_sequence" as const,
     icon: Rocket,
     title: "Launch sequence",
-    desc: "Teaser → launch → reminder → last chance, over 7 days. Approve once, posts go out automatically.",
+    desc: "Teaser → launch → reminder → last chance, over about a week. Posts go out automatically.",
     slots: ["Teaser", "Launch", "Reminder", "Last chance"],
   },
   {
     id: "weekly" as const,
     icon: Repeat,
     title: "Weekly cadence",
-    desc: "Steady posting on the days you pick. Each week's batch waits for your approval.",
+    desc: "Steady posting on the days you pick, for the next two weeks.",
     slots: null,
   },
   {
@@ -61,10 +61,10 @@ const MODES = [
 ];
 
 /** Day offsets from the launch start date for each launch-sequence slot. */
-const LAUNCH_OFFSETS = [0, 1, 3, 6] as const;
+const LAUNCH_OFFSETS = [0, 2, 5, 7] as const;
 
-/** How many upcoming occurrences to preview for weekly cadence. */
-const WEEKLY_PREVIEW_COUNT = 4;
+/** Weekly cadence covers this many days from the start date (backend default: 2 weeks). */
+const WEEKLY_SPAN_DAYS = 14;
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const WEEKDAY_HEADERS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
@@ -152,8 +152,7 @@ export function StepSchedule({
       const startDate = new Date(`${start}T00:00:00`);
       const out: PublishSlot[] = [];
       let d = startDate;
-      // Walk forward until we've previewed enough occurrences of the chosen weekdays.
-      for (let i = 0; i < 60 && out.length < WEEKLY_PREVIEW_COUNT; i++) {
+      for (let i = 0; i < WEEKLY_SPAN_DAYS; i++) {
         if (data.days.includes(format(d, "EEE"))) {
           out.push({ date: d, label: format(d, "EEE") });
         }
@@ -196,16 +195,20 @@ export function StepSchedule({
 
   /**
    * Weekly cadence chips are anchored to WEEKDAYS, not to the start date:
-   * every in-month date matching a chosen weekday on/after the start gets a
-   * chip. Clicking a date only moves the start boundary, so highlights never
+   * every in-month date matching a chosen weekday within the two weeks from
+   * the start gets a chip. Clicking a date only moves the start boundary, so highlights never
    * "run away" when clicking around.
    */
   const recurringSet = new Set<string>();
   if (data.mode === "weekly" && data.dates[0] && data.days.length > 0) {
     const start = data.dates[0];
+    const end = format(
+      addDays(new Date(`${start}T00:00:00`), WEEKLY_SPAN_DAYS),
+      "yyyy-MM-dd"
+    );
     for (const day of monthDays) {
       const iso = format(day, "yyyy-MM-dd");
-      if (iso >= start && data.days.includes(format(day, "EEE"))) {
+      if (iso >= start && iso < end && data.days.includes(format(day, "EEE"))) {
         recurringSet.add(iso);
       }
     }
