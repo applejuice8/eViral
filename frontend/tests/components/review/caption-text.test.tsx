@@ -50,3 +50,33 @@ describe("CaptionText", () => {
     expect(screen.getByText("Order via DM # or WhatsApp")).toBeInTheDocument();
   });
 });
+
+describe("CaptionText hashtags", () => {
+  it("puts hashtags on their own line under the caption, styled blue", () => {
+    render(
+      <CaptionText
+        text={"Something layered is coming...\n\nTunggu reveal-nya!"}
+        hashtags={["#KekKakNora", "#KekLapis"]}
+      />
+    );
+    const line = screen.getByTestId("hashtags");
+    expect(line).toHaveTextContent("#KekKakNora #KekLapis");
+    // The caption paragraph comes first, then the hashtag line.
+    const caption = screen.getByText(/Something layered/);
+    expect(caption.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(caption).not.toHaveTextContent("#KekKakNora");
+    for (const tag of ["#KekKakNora", "#KekLapis"]) {
+      expect(screen.getByText(tag).className).toContain("text-info-600");
+    }
+  });
+
+  it("leaves out the hashtag line when there are none", () => {
+    render(<CaptionText text="Just words" hashtags={[]} />);
+    expect(screen.queryByTestId("hashtags")).toBeNull();
+  });
+
+  it("shows the author handle before the caption", () => {
+    render(<CaptionText author="kekkaknora" text="Hello" />);
+    expect(screen.getByText("kekkaknora").tagName).toBe("STRONG");
+  });
+});

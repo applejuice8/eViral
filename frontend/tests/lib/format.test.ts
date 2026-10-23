@@ -46,6 +46,6 @@ describe("small helpers", () => {
 
   it("makes initials", () => {
     expect(initials("Aisha Rahman")).toBe("AR");
-    expect(initials("Kek Kak Nora")).toBe("KK");
+    expect(initials("Kek Kak Nora")).toBe("KN");
   });
 });
