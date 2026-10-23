@@ -34,8 +34,7 @@ jobs:
           DATABASE_URL: sqlite:///./ci.db
 
   frontend:
-    # No test suite yet — CI only proves the app installs and builds.
-    name: Frontend — build
+    name: Frontend — tests + build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -59,6 +58,9 @@ jobs:
         # the Dockerfile passes this flag. ESLint is not run here: there are
         # pre-existing rule violations in app code (tracked separately).
         run: pnpm install --frozen-lockfile --dangerously-allow-all-builds
+
+      - name: Run tests
+        run: pnpm test
 
       - name: Build
         run: pnpm build
