@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { PlatformIcon } from "@/components/platform-icon";
 import { FlagsBadges, StatusBadge } from "@/components/status-badge";
+import { CaptionText } from "@/components/review/caption-text";
 import {
   calendarExtras,
   demoCampaign,
@@ -247,12 +248,7 @@ export default function CalendarPage() {
                 className="object-cover"
               />
             </div>
-            <p className="text-[13px] leading-relaxed text-gray-800">
-              {selected.caption}
-            </p>
-            <p className="text-[13px] text-info-600">
-              {selected.hashtags.join(" ")}
-            </p>
+            <CaptionText text={selected.caption} />
             <div className="flex items-center gap-1.5 text-xs text-gray-500">
               <Clock className="h-3.5 w-3.5" />
               {format(parseISO(selected.scheduledAt), "EEEE d MMM, h:mm a")}
