@@ -578,7 +578,7 @@ Also expose `POST /internal/tick` (protected by a secret header) so an external 
 ```bash
 #!/usr/bin/env bash
 (cd apps/api && uvicorn app.main:app --host 0.0.0.0 --port 8000) &
-(cd apps/web && npm run build && npm run start -- -p 3000) &
+(cd frontend && npm run build && npm run start -- -p 3000) &
 wait
 ```
 
