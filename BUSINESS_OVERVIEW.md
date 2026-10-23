@@ -5,8 +5,6 @@
 > **Event:** Orbyte Smart SME Challenge: Less Busywork, Better Business (Domain 2), sponsored by Alpha Red Solutions Sdn Bhd
 > **Main SDG targets:** 8.2 (productivity through technological upgrading and innovation) and 8.3 (support for entrepreneurship and growth of MSMEs). Possible link to SDG 10.
 
-**On the name:** it follows Orbyte's "e + task" pattern (eLeave, eClaim, eSign). One caution: "viral" is a promise nobody can keep. In marketing copy, say eViral helps you *show up consistently*, not that it makes posts go viral. The product's own guardrails block "guaranteed viral" style claims in generated posts.
-
 ---
 
 ## 1. One-paragraph summary
@@ -19,7 +17,7 @@ eViral lets a small business market a product without a marketing team. The owne
 
 ### 2.1 The pain point (specific, not "SMEs are inefficient")
 
-Malaysian micro and small business owners know they need to be visible on social media, but they don't have the time, design skills or budget to produce content consistently. A typical launch looks like this: the owner snaps a photo on their phone, spends an evening writing captions and fiddling with a design app, posts once, then goes quiet for weeks. Prices and promotion dates get typed by hand, and sometimes they're wrong.
+Malaysian small and medium business owners know they need to be visible on social media, but they don't have the time, design skills or budget to produce content consistently. A typical launch looks like this: the owner snaps a photo on their phone, spends an evening writing captions and fiddling with a design app, posts once, then goes quiet for weeks. Prices and promotion dates get typed by hand, and sometimes they're wrong.
 
 ### 2.2 Who feels it
 
@@ -56,8 +54,6 @@ Malaysian micro and small business owners know they need to be visible on social
 | 6 | 98.5% of business establishments in Malaysia were SMEs (2019) | CompareHero blog (SME Corp / DOSM figures) | **Verify** against the DOSM or SME Corp primary release. |
 | 7 | RM3,000–8,000 per month for a social media manager | Team estimate | **Unverified.** Replace with quotes from 2–3 agencies or job listings. |
 
-**Your own evidence beats any statistic.** Even 3–5 short interviews with real SME owners saying "I spend X hours a week and last posted Y days ago" carry more weight than a blog citation. See §11.
-
 ---
 
 ## 4. The solution
@@ -66,7 +62,7 @@ Malaysian micro and small business owners know they need to be visible on social
 
 > "Give us a product name and a photo. We'll make the content and the schedule. You approve, and eViral posts for you."
 
-"Autopilot" describes the effort saved. It must never mean publishing without a human. A person always approves, and can pause at any time.
+It must never mean publishing without a human. A person always approves, and can pause at any time.
 
 ### 4.2 Primary use case: launch a product in three inputs
 
@@ -116,15 +112,6 @@ The engine is the same for all of them: **trigger → facts → creative → che
 | 4 | **Human approval** | Owner reviews the campaign (images, video, captions, schedule, warnings) and approves, edits or rejects. Staff can prepare but cannot approve. |
 | 5 | **Visible outcome** | Posts publish on schedule, appear in the calendar and activity log, and feed analytics |
 
-### 4.6 Features by priority
-
-| Priority | Feature |
-|---|---|
-| **MVP (must work live)** | Add product with name and photo; AI image improvement; captions per platform; launch-sequence schedule; fact validator; Owner approval; scheduled auto-publishing (mock publisher); activity log; role switcher |
-| MVP (if time) | Short promo video from the product image; recurring weekly cadence; simulated analytics; BM / EN / mixed language |
-| Stretch | Comment reply drafts with escalation to a human |
-| Roadmap | Real publishing to Meta and TikTok; POS and e-commerce triggers via Orbyte Connect; trend insights from permitted data; multi-outlet |
-
 ### 4.7 What makes it more than "a chatbot that writes captions"
 
 1. **Starts from your product photo**, not a blank prompt.
@@ -153,7 +140,7 @@ Based on the Orbyte modules page (orbyte.my/modules):
 | Easy to learn | Three inputs; one review screen |
 | Reusable | Adapter-based; other modules can trigger campaigns (for example Hiring: "we're hiring" post) |
 
-> **Do not say eViral reads products from the Orbyte Work module.** Work covers Daily Work Status and Monthly Project Focus. Say instead: *"Products are entered directly today, and the product adapter is designed to sync with Orbyte Connect (E-commerce and POS)."*
+>Products are entered directly today, and the product adapter is designed to sync with Orbyte Connect (E-commerce and POS).
 
 ---
 
@@ -193,7 +180,7 @@ Work out real unit costs with the AI providers' pricing calculators before fixin
 
 ## 8. Market and growth path
 
-- **Target:** Malaysian micro and small businesses that rely on WhatsApp, spreadsheets and social media. Early adopters: home-based food sellers, boutiques, beauty, accessories and online sellers.
+- **Target:** Malaysian small and medium businesses that rely on WhatsApp, spreadsheets and social media. Early adopters: home-based food sellers, boutiques, beauty, accessories and online sellers.
 - **Why now:** high social media adoption (DataReportal, Oct 2025) and widespread familiarity with AI tools among Malaysian internet users (reported in Digital 2026 coverage).
 - **Expansion:**
   1. More platforms (WhatsApp Channels, Xiaohongshu, YouTube Shorts).
@@ -230,20 +217,6 @@ Be ready for: *"Meta Business Suite is free. Why would an SME pay?"* Answer: Met
 | Privacy and PDPA | See §12 |
 
 ---
-
-## 11. Validation plan (optional but valuable)
-
-Aim for **3–5 conversations** with real SME owners or staff (a home baker, a boutique, a pasar malam seller).
-
-**Ask:**
-1. How often do you post, and how long does a launch post take you?
-2. Who writes the captions and makes the photos and videos? Who approves?
-3. Have you ever posted the wrong price or date? What happened?
-4. Would you trust AI to write and design posts? What would worry you?
-5. Would you prefer to approve on WhatsApp, a phone, or a website?
-
-**Show them** the prototype for 2 minutes with no explanation and note where they hesitate. That feeds your "easy to learn" claim. Add one slide: "What we heard from N owners."
-
 ---
 
 ## 12. Privacy and PDPA (short statement for the proposal)
