@@ -1,36 +1,34 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# eViral — Web (UI demo)
 
-## Getting Started
+Frontend for **eViral**, an Orbyte module for AI-assisted social media marketing.
+**UI only** — all data is synthetic mock data (`lib/data.ts`); there is no backend logic.
 
-First, run the development server:
+Stack: Next.js 16 (App Router) · TypeScript · Tailwind CSS v4 · shadcn-style primitives (`components/ui`) · pnpm.
+
+## Run
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
+pnpm dev        # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+> Note: if the local environment blocks cleaning the default `.next` cache,
+> build into a fresh dir instead: `NEXT_DIST_DIR=.next-build pnpm build`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Screens
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Route | What it is | Design reference (Mobbin) |
+|---|---|---|
+| `/` | Dashboard: KPI cards, approval queue, activity preview | Later overview |
+| `/products/new` | 4-step wizard: Tell us → Confirm → Schedule → Build | Zillow progress bar, OpenSea intake form, Asana editable chips, Employment Hero loading |
+| `/review/[campaignId]` | Approval screen: original vs AI-edited image, fidelity tick, per-platform post previews with inline editing and live fact-check badges | Buffer composer |
+| `/calendar` | Week/month calendar of posts, click for side panel | Buffer calendar |
+| `/audit` | Activity feed with action chips and before/after detail | 7shifts activity log |
 
-## Learn More
+## Conventions
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Single-user demo:** the app runs as one Owner (Aisha, Kek Kak Nora). No login, no role switcher. Approve/pause/publish are always enabled.
+- **Status colors (used consistently across badges, calendar, audit):** green = approved/published · amber = pending/warning · red = blocked/failed · blue = informational/scheduled.
+- Brand color: violet (`brand-*` tokens in `app/globals.css`).
+- Product images in `public/assets/` are synthetic SVG placeholders (original vs AI-improved).
+- Demo moment: on `/review/cmp_kek-lapis`, edit a caption to a wrong price (e.g. RM79) — the fact-check flags it as blocked. The Approve button stays disabled until all blocks are fixed and the fidelity box is ticked.

@@ -13,7 +13,6 @@ import {
 } from "@/components/review/image-compare";
 import {
   PostPreviewCard,
-  validateCaption,
   type DraftState,
 } from "@/components/review/post-preview-card";
 import { demoCampaign, type ValidatorFlag } from "@/lib/data";

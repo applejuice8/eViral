@@ -3,15 +3,11 @@
 import * as React from "react";
 import Image from "next/image";
 import { Plus, Sparkles, X } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export interface ConfirmData {
   attributes: string[];
 }
-
-const AI_OBSERVED = ["Layered cake", "Round", "Brown & cream layers", "Sliced, on a plate"];
 const UNCERTAIN = ["Flavour", "Ingredients", "Size"];
 
 // Step 2 — "What we see": Asana-style inline-editable chips next to the

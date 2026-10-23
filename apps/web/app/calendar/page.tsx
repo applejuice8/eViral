@@ -49,8 +49,19 @@ const statusDot: Record<DraftStatus, string> = {
 
 export default function CalendarPage() {
   const [view, setView] = React.useState<"week" | "month">("week");
-  const [cursor, setCursor] = React.useState(() => new Date());
+  // Current time is only available on the client (cacheComponents prerender).
+  const [cursor, setCursor] = React.useState<Date | null>(null);
+  React.useEffect(() => setCursor(new Date()), []);
   const [selected, setSelected] = React.useState<PostDraft | null>(null);
+
+  if (!cursor) {
+    return (
+      <div className="mx-auto max-w-6xl space-y-4">
+        <div className="h-8 w-40 animate-pulse rounded-lg bg-gray-200" />
+        <div className="h-96 animate-pulse rounded-xl bg-gray-100" />
+      </div>
+    );
+  }
 
   const days =
     view === "week"
@@ -101,7 +112,7 @@ export default function CalendarPage() {
               className="h-8 w-8"
               onClick={() =>
                 setCursor((c) =>
-                  view === "week" ? addWeeks(c, -1) : addMonths(c, -1)
+                  c ? (view === "week" ? addWeeks(c, -1) : addMonths(c, -1)) : c
                 )
               }
             >
@@ -113,7 +124,7 @@ export default function CalendarPage() {
               className="h-8 w-8"
               onClick={() =>
                 setCursor((c) =>
-                  view === "week" ? addWeeks(c, 1) : addMonths(c, 1)
+                  c ? (view === "week" ? addWeeks(c, 1) : addMonths(c, 1)) : c
                 )
               }
             >
