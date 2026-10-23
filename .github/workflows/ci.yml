@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend — migrations + tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Apply migrations (SQLite)
+        run: uv run alembic upgrade head
+        env:
+          DATABASE_URL: sqlite:///./ci.db
+
+      - name: Run tests
+        run: uv run pytest -q
+        env:
+          DATABASE_URL: sqlite:///./ci.db
+
+  frontend:
+    # No test suite yet — CI only proves the app installs and builds.
+    name: Frontend — build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      # Reads the version from packageManager in package.json
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install dependencies
+        # pnpm v12 blocks dependency build scripts by default; same reason
+        # the Dockerfile passes this flag. ESLint is not run here: there are
+        # pre-existing rule violations in app code (tracked separately).
+        run: pnpm install --frozen-lockfile --dangerously-allow-all-builds
+
+      - name: Build
+        run: pnpm build
+        env:
+          BACKEND_ORIGIN: http://localhost:8000
