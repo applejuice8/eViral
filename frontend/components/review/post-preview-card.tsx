@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/input";
 import { FlagsBadges, StatusBadge } from "@/components/status-badge";
 import { PlatformIcon } from "@/components/platform-icon";
+import { CaptionText } from "@/components/review/caption-text";
 import {
   owner,
   platformLabel,
@@ -60,26 +61,38 @@ export interface DraftState extends PostDraft {
 }
 
 // Buffer-composer-style real post preview card with inline caption editing.
+// `caption` is the effective caption for this platform (shared or overridden);
+// hashtags are part of the caption text and styled when detected.
 export function PostPreviewCard({
   draft,
+  caption,
   image,
   price,
   approved,
+  editLabel,
   onEdit,
 }: {
   draft: DraftState;
+  caption: string;
   image: string;
   price: number | null;
   approved: boolean;
+  editLabel: string;
   onEdit: (id: string, caption: string, flags: ValidatorFlag[]) => void;
 }) {
   const [editing, setEditing] = React.useState(false);
-  const [value, setValue] = React.useState(draft.caption);
+  const [value, setValue] = React.useState(caption);
   const blocked = draft.liveFlags.some((f) => f.severity === "block");
+
+  // Keep the draft textarea in sync when the caption changes externally
+  // (e.g. "edit for all" on the left panel).
+  React.useEffect(() => {
+    if (!editing) setValue(caption);
+  }, [caption, editing]);
 
   function commit() {
     setEditing(false);
-    if (value !== draft.caption) {
+    if (value !== caption) {
       onEdit(draft.id, value, validateCaption(value, price));
     }
   }
@@ -123,7 +136,7 @@ export function PostPreviewCard({
         <Bookmark className="ml-auto h-4.5 w-4.5" />
       </div>
 
-      {/* caption */}
+      {/* caption (hashtags inline, styled) */}
       <div className="px-3.5 py-2.5">
         {editing ? (
           <Textarea
@@ -132,31 +145,31 @@ export function PostPreviewCard({
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onBlur={commit}
-            onKeyDown={(e) => e.key === "Escape" && (setValue(draft.caption), setEditing(false))}
+            onKeyDown={(e) => e.key === "Escape" && (setValue(caption), setEditing(false))}
             className="text-[13px]"
           />
         ) : (
           <button
             type="button"
-            onClick={() => !approved && (setValue(draft.caption), setEditing(true))}
+            onClick={() => !approved && (setValue(caption), setEditing(true))}
             className={cn(
               "group block w-full text-left",
               approved ? "cursor-default" : "cursor-text"
             )}
-            title={approved ? undefined : "Click to edit — edits go back through fact-checking"}
+            title={approved ? undefined : editLabel}
           >
-            <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-gray-800">
-              <span className="font-semibold">{owner.business.toLowerCase().replaceAll(" ", "")}</span>{" "}
-              {draft.caption}
+            <div className="relative">
+              <CaptionText
+                text={
+                  owner.business.toLowerCase().replaceAll(" ", "") + " " + caption
+                }
+              />
               {!approved && (
-                <Pencil className="ml-1.5 inline h-3 w-3 text-gray-300 opacity-0 transition-opacity group-hover:opacity-100" />
+                <Pencil className="absolute right-0 top-0 h-3 w-3 text-gray-300 opacity-0 transition-opacity group-hover:opacity-100" />
               )}
-            </p>
+            </div>
           </button>
         )}
-        <p className="mt-1.5 text-[13px] leading-relaxed text-info-600">
-          {draft.hashtags.join(" ")}
-        </p>
         {draft.videoIdea && (
           <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-gray-50 px-2.5 py-2 text-[11px] text-gray-500">
             <Clapperboard className="mt-0.5 h-3 w-3 shrink-0" />

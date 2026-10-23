@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WizardProgress } from "@/components/wizard/progress-bar";
@@ -32,6 +33,7 @@ const STEP_TITLES = [
 ];
 
 export default function NewProductPage() {
+  const router = useRouter();
   const [step, setStep] = React.useState(0);
   const [tellUs, setTellUs] = React.useState<TellUsData>({
     name: "",
@@ -108,17 +110,20 @@ export default function NewProductPage() {
         {step === 3 && <BuildProgress productName={tellUs.name} />}
       </div>
 
-      {/* Footer */}
-      {!building && (
-        <div className="flex items-center justify-between border-t border-gray-200 pt-4">
-          <Button
-            variant="outline"
-            onClick={() => setStep((s) => Math.max(0, s - 1))}
-            disabled={step === 0}
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Button>
+      {/* Footer — Back always works: step 0 leaves to the dashboard,
+          later steps go back one step (including during the build). */}
+      <div className="flex items-center justify-between border-t border-gray-200 pt-4">
+        <Button
+          variant="outline"
+          onClick={() =>
+            step === 0 ? router.push("/") : setStep((s) => Math.max(0, s - 1))
+          }
+          title={step === 0 ? "Back to dashboard" : "Go back one step"}
+        >
+          <ArrowLeft className="h-4 w-4" />
+          {step === 0 ? "Back to dashboard" : "Back"}
+        </Button>
+        {!building && (
           <Button
             onClick={() => canContinue && setStep((s) => s + 1)}
             disabled={!canContinue}
@@ -131,8 +136,8 @@ export default function NewProductPage() {
             {step === 2 ? "Build campaign" : "Continue"}
             <ArrowRight className="h-4 w-4" />
           </Button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

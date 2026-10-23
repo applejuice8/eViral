@@ -98,7 +98,7 @@ export function BuildProgress({ productName }: { productName: string }) {
               Your campaign is ready to review
             </h2>
             <p className="mt-1 max-w-sm text-[13px] text-gray-500">
-              We prepared 7 posts across your platforms. Check the captions and
+              We prepared 3 posts — one per platform. Check the captions and
               images, then approve — nothing posts without your OK.
             </p>
           </div>

@@ -3,20 +3,23 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { format, parseISO } from "date-fns";
-import { CheckCheck, Pause, Rocket, XCircle } from "lucide-react";
+import { CheckCheck, Pause, Rocket, XCircle, Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  ImageCompare,
-} from "@/components/review/image-compare";
+import { Textarea } from "@/components/ui/input";
+import { ImageCompare } from "@/components/review/image-compare";
+import { CaptionText } from "@/components/review/caption-text";
 import {
   PostPreviewCard,
+  validateCaption,
   type DraftState,
 } from "@/components/review/post-preview-card";
-import { demoCampaign, type ValidatorFlag } from "@/lib/data";
+import { aiCaption, demoCampaign, type ValidatorFlag } from "@/lib/data";
 import { cn, formatRM } from "@/lib/utils";
+
+type OverrideMap = Partial<Record<DraftState["platform"], string>>;
 
 export default function ReviewPage() {
   const router = useRouter();
@@ -24,37 +27,58 @@ export default function ReviewPage() {
   const [approved, setApproved] = React.useState(false);
   const [paused, setPaused] = React.useState(false);
   const [publishedFirst, setPublishedFirst] = React.useState(false);
-  const [drafts, setDrafts] = React.useState<DraftState[]>(
-    demoCampaign.drafts.map((d) => ({
-      ...d,
-      // Seed live flags from mock, but re-derive for drafts whose stored
-      // flags were examples of a *fixed* error (keep the blocked one as-is).
-      liveFlags: d.flags,
-    }))
+  const [editingShared, setEditingShared] = React.useState(false);
+  const [sharedValue, setSharedValue] = React.useState(aiCaption);
+
+  const drafts: DraftState[] = React.useMemo(
+    () =>
+      demoCampaign.drafts.map((d) => ({
+        ...d,
+        liveFlags: [],
+      })),
+    []
   );
 
-  function handleEdit(id: string, caption: string, flags: ValidatorFlag[]) {
-    setDrafts((ds) =>
-      ds.map((d) =>
-        d.id === id
-          ? {
-              ...d,
-              caption,
-              liveFlags: flags,
-              status: flags.some((f) => f.severity === "block")
-                ? "blocked"
-                : "pending_approval",
-            }
-          : d
-      )
-    );
-  }
+  // Per-platform caption overrides (a post edited on its own keeps its version
+  // even when the shared caption changes afterwards).
+  const [overrides, setOverrides] = React.useState<OverrideMap>({});
 
-  const anyBlocked = drafts.some((d) =>
-    d.liveFlags.some((f) => f.severity === "block")
+  const price = demoCampaign.price;
+  const sharedFlags = validateCaption(sharedValue, price);
+
+  // Effective caption + flags per post: override wins, otherwise the shared caption.
+  const effective = drafts.map((d) => {
+    const caption = overrides[d.platform] ?? sharedValue;
+    return { draft: d, caption, flags: validateCaption(caption, price) };
+  });
+  const anyBlocked = effective.some(({ flags }) =>
+    flags.some((f) => f.severity === "block")
   );
   const canApprove = fidelityTicked && !anyBlocked && !approved;
-  const firstDraft = drafts[0];
+
+  function handleSharedCommit() {
+    setEditingShared(false);
+    // Shared caption changed — per-post flags re-derive automatically for
+    // posts without their own override.
+  }
+
+  function handlePlatformEdit(id: string, caption: string) {
+    const draft = drafts.find((d) => d.id === id);
+    if (!draft) return;
+    setOverrides((o) => ({ ...o, [draft.platform]: caption }));
+  }
+
+  function resetPlatformEdit(id: string) {
+    const draft = drafts.find((d) => d.id === id);
+    if (!draft) return;
+    setOverrides((o) => {
+      const next = { ...o };
+      delete next[draft.platform];
+      return next;
+    });
+  }
+
+  const first = effective[0];
 
   return (
     <div className="mx-auto max-w-6xl space-y-5">
@@ -70,7 +94,7 @@ export default function ReviewPage() {
             <Badge variant="muted">Goal: {demoCampaign.goal}</Badge>
           </div>
           <p className="mt-1 text-[13px] text-gray-500">
-            {drafts.length} posts ·{" "}
+            {effective.length} posts ·{" "}
             {format(parseISO(drafts[0].scheduledAt), "d MMM")} –{" "}
             {format(parseISO(drafts[drafts.length - 1].scheduledAt), "d MMM")} ·{" "}
             {formatRM(demoCampaign.price)}
@@ -85,7 +109,7 @@ export default function ReviewPage() {
       </div>
 
       <div className="grid gap-5 lg:grid-cols-3">
-        {/* Left: fidelity panel + actions */}
+        {/* Left: fidelity panel (image + shared AI caption) + actions */}
         <div className="space-y-4 lg:sticky lg:top-18 lg:self-start">
           <Card>
             <CardHeader>
@@ -97,6 +121,81 @@ export default function ReviewPage() {
                 improved={demoCampaign.productImageImproved}
                 productName={demoCampaign.productName}
               />
+
+              {/* Shared AI-generated caption — edit for all */}
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[12px] font-medium text-gray-500">
+                    AI-generated caption
+                  </p>
+                  <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700">
+                    Same on all platforms
+                  </span>
+                </div>
+
+                {editingShared ? (
+                  <div className="mt-2">
+                    <Textarea
+                      autoFocus
+                      rows={5}
+                      value={sharedValue}
+                      onChange={(e) => setSharedValue(e.target.value)}
+                      onBlur={handleSharedCommit}
+                      onKeyDown={(e) => {
+                        if (e.key === "Escape") {
+                          setSharedValue(sharedValue === aiCaption ? aiCaption : sharedValue);
+                          setEditingShared(false);
+                        }
+                      }}
+                      className="text-[13px]"
+                    />
+                    <p className="mt-1.5 text-[11px] text-gray-400">
+                      Editing here updates all 3 posts. Posts with their own edit
+                      keep their version. Hashtags are part of the caption — type
+                      them with # and they get styled automatically.
+                    </p>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => !approved && setEditingShared(true)}
+                    className={cn(
+                      "group mt-2 block w-full text-left",
+                      approved ? "cursor-default" : "cursor-text"
+                    )}
+                    title={approved ? undefined : "Click to edit the caption for all platforms"}
+                  >
+                    <div className="relative">
+                      <CaptionText text={sharedValue} />
+                      {!approved && (
+                        <Pencil className="absolute right-0 top-0 h-3 w-3 text-gray-300 opacity-0 transition-opacity group-hover:opacity-100" />
+                      )}
+                    </div>
+                  </button>
+                )}
+
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {sharedFlags.map((f, i) => (
+                    <Badge
+                      key={i}
+                      variant={f.severity === "block" ? "danger" : "warning"}
+                      title={f.detail}
+                    >
+                      {f.severity === "block" ? "⛔" : "⚠"}{" "}
+                      {f.code.replaceAll("_", " ").toLowerCase()}
+                    </Badge>
+                  ))}
+                  {sharedFlags.length === 0 && (
+                    <Badge variant="success">✓ Facts check passed</Badge>
+                  )}
+                </div>
+                <p className="mt-1.5 text-[11px] text-gray-400">
+                  {overrides && Object.keys(overrides).length > 0
+                    ? `${3 - Object.keys(overrides).length} of 3 posts follow this caption.`
+                    : "Applies to all 3 posts."}
+                </p>
+              </div>
+
               <label
                 className={cn(
                   "flex cursor-pointer items-start gap-2.5 rounded-lg border p-3 transition-colors",
@@ -181,22 +280,43 @@ export default function ReviewPage() {
           </Card>
         </div>
 
-        {/* Right: per-platform preview cards */}
+        {/* Right: 3 per-platform preview cards */}
         <div className="grid gap-4 sm:grid-cols-2 lg:col-span-2">
-          {drafts.map((d) => (
-            <PostPreviewCard
-              key={d.id}
-              draft={
-                publishedFirst && d.id === firstDraft.id
-                  ? { ...d, status: "published" }
-                  : d
-              }
-              image={demoCampaign.productImageImproved}
-              price={demoCampaign.price}
-              approved={approved}
-              onEdit={handleEdit}
-            />
-          ))}
+          {effective.map(({ draft, caption, flags }) => {
+            const overridden = overrides[draft.platform] !== undefined;
+            return (
+              <div key={draft.id} className="space-y-1.5">
+                {overridden && (
+                  <div className="flex items-center justify-between px-1">
+                    <span className="rounded-full bg-warning-50 px-2 py-0.5 text-[11px] font-medium text-warning-700">
+                      Edited for {draft.platform} only
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => resetPlatformEdit(draft.id)}
+                      disabled={approved}
+                      className="text-[11px] font-medium text-gray-400 underline-offset-2 hover:text-gray-600 hover:underline disabled:opacity-40"
+                    >
+                      Use shared caption
+                    </button>
+                  </div>
+                )}
+                <PostPreviewCard
+                  draft={
+                    publishedFirst && draft.id === first.draft.id
+                      ? { ...draft, liveFlags: flags, status: "published" }
+                      : { ...draft, liveFlags: flags }
+                  }
+                  caption={caption}
+                  image={demoCampaign.productImageImproved}
+                  price={price}
+                  approved={approved}
+                  editLabel={`Click to edit the ${draft.platform} caption only`}
+                  onEdit={handlePlatformEdit}
+                />
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
