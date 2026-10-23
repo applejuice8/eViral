@@ -9,9 +9,6 @@ import {
   CalendarDays,
   ScrollText,
   Zap,
-  Instagram,
-  Facebook,
-  Music2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { owner } from "@/lib/data";
@@ -24,9 +21,9 @@ const nav = [
 ];
 
 const socialNav = [
-  { href: "/instagram", label: "Instagram", icon: Instagram, iconClass: "text-[#c13584]" },
-  { href: "/facebook", label: "Facebook", icon: Facebook, iconClass: "text-[#1877f2]" },
-  { href: "/tiktok", label: "TikTok", icon: Music2, iconClass: "text-[#fe2c55]" },
+  { href: "/instagram", label: "Instagram", dotClass: "bg-[#c13584]" },
+  { href: "/facebook", label: "Facebook", dotClass: "bg-[#1877f2]" },
+  { href: "/tiktok", label: "TikTok", dotClass: "bg-[#fe2c55]" },
 ];
 
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {
@@ -81,8 +78,11 @@ function SocialNavItems({ onNavigate }: { onNavigate?: () => void }) {
                   : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
               )}
             >
-              <item.icon
-                className={cn("h-4 w-4", active ? item.iconClass : "text-gray-500")}
+              <span
+                className={cn(
+                  "h-2 w-2 shrink-0 rounded-full",
+                  item.dotClass
+                )}
               />
               {item.label}
             </Link>
