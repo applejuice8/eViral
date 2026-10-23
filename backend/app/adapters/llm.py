@@ -9,7 +9,7 @@ import json
 from functools import lru_cache
 from typing import Protocol
 
-from openai import OpenAI
+from openai import APIError, OpenAI
 
 from app.config import Settings, get_settings
 
@@ -56,18 +56,23 @@ class OpenRouterProvider:
         return self._model
 
     def chat_json(self, system: str, user_payload: dict) -> dict:
-        response = self._client.chat.completions.create(
-            model=self._model,
-            messages=[
-                {"role": "system", "content": system},
-                {
-                    "role": "user",
-                    "content": json.dumps(user_payload, ensure_ascii=False),
-                },
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.7,
-        )
+        try:
+            response = self._client.chat.completions.create(
+                model=self._model,
+                messages=[
+                    {"role": "system", "content": system},
+                    {
+                        "role": "user",
+                        "content": json.dumps(user_payload, ensure_ascii=False),
+                    },
+                ],
+                response_format={"type": "json_object"},
+                temperature=0.7,
+            )
+        except APIError as exc:
+            # SDK/auth/rate-limit errors all become LLMError so the router
+            # can map them to a clean 502.
+            raise LLMError(f"Provider request failed: {exc}") from exc
         content = response.choices[0].message.content
         try:
             return json.loads(content)
