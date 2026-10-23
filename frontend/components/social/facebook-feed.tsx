@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Menu,
   Bell,
@@ -18,6 +20,10 @@ import {
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 import { fbUser, fbStories, fbPosts, fbContacts, type FbPost } from "@/lib/social-mock";
+import { CaptionText } from "@/components/review/caption-text";
+import { mediaUrl, type FeedPost } from "@/lib/api";
+import { initials, timeAgo } from "@/lib/format";
+import { usePostedPosts } from "@/lib/use-posted-posts";
 
 const FB_BLUE = "#1877f2";
 
@@ -210,7 +216,57 @@ function FbPostCard({ post }: { post: FbPost }) {
   );
 }
 
+// A real post from the mock publisher, drawn like the filler posts.
+function RealFbPostCard({ post, now }: { post: FeedPost; now: number }) {
+  return (
+    <article id={`post-${post.id}`} className="rounded-xl bg-white shadow-xs">
+      <header className="flex items-center gap-3 p-3 pb-2">
+        <Avatar initials={initials(post.business_name)} size="md" />
+        <div className="min-w-0 leading-tight">
+          <p className="truncate text-[14px] font-semibold text-gray-900">{post.business_name}</p>
+          <p className="flex items-center gap-1 text-[12px] text-gray-500">
+            {post.posted_at ? timeAgo(post.posted_at, now) : ""} · <Globe className="h-3 w-3" />
+          </p>
+        </div>
+        <MoreHorizontal className="ml-auto h-5 w-5 text-gray-500" />
+      </header>
+
+      <CaptionText
+        text={post.caption}
+        hashtags={post.hashtags}
+        className="px-3 pb-2 text-[14px] text-gray-900"
+      />
+
+      {post.image_url && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={mediaUrl(post.image_url)!}
+          alt={post.product_name}
+          className="max-h-[360px] w-full border-y border-gray-200 object-cover"
+        />
+      )}
+
+      <div className="flex items-center justify-around border-t border-gray-200 px-3 py-1">
+        {[
+          { icon: ThumbsUp, label: "Like" },
+          { icon: MessageCircle, label: "Comment" },
+          { icon: Share2, label: "Share" },
+        ].map(({ icon: Icon, label }) => (
+          <span
+            key={label}
+            className="flex items-center gap-2 rounded-lg px-6 py-2 text-[13px] font-medium text-gray-600"
+          >
+            <Icon className="h-[18px] w-[18px]" />
+            {label}
+          </span>
+        ))}
+      </div>
+    </article>
+  );
+}
+
 export function FacebookFeed() {
+  const { posts: realPosts, now } = usePostedPosts("facebook");
   return (
     <div className="ev-fade-up min-h-full bg-[#f0f2f5]">
       <TopBar />
@@ -221,6 +277,9 @@ export function FacebookFeed() {
         <div className="flex w-full max-w-[560px] flex-col gap-4 py-4">
           <StoriesRow />
           <Composer />
+          {realPosts.map((post) => (
+            <RealFbPostCard key={`real-${post.id}`} post={post} now={now} />
+          ))}
           {fbPosts.map((post) => (
             <FbPostCard key={post.id} post={post} />
           ))}

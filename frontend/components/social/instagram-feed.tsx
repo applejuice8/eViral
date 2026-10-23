@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Home,
   Search,
@@ -19,6 +21,10 @@ import {
   igSuggestions,
   type IgPost,
 } from "@/lib/social-mock";
+import { CaptionText } from "@/components/review/caption-text";
+import { mediaUrl, type FeedPost } from "@/lib/api";
+import { handleOf, initials, timeAgo } from "@/lib/format";
+import { usePostedPosts } from "@/lib/use-posted-posts";
 
 function IgIconRail() {
   return (
@@ -124,7 +130,55 @@ function IgPostCard({ post }: { post: IgPost }) {
   );
 }
 
+// A real post from the mock publisher, drawn like the filler posts.
+function RealIgPostCard({ post, now }: { post: FeedPost; now: number }) {
+  const handle = handleOf(post.business_name);
+  return (
+    <article id={`post-${post.id}`} className="border-b border-gray-200 pb-4">
+      <header className="flex items-center gap-3 py-3">
+        <span className="rounded-full bg-gradient-to-tr from-[#f9ce34] via-[#ee2a7b] to-[#6228d7] p-[2px]">
+          <span className="block rounded-full bg-white p-[2px]">
+            <Avatar initials={initials(post.business_name)} size="md" />
+          </span>
+        </span>
+        <div className="min-w-0 leading-tight">
+          <p className="truncate text-[13px] font-semibold text-gray-900">{handle}</p>
+          <p className="text-[11px] text-gray-500">
+            {post.posted_at ? timeAgo(post.posted_at, now) : ""}
+          </p>
+        </div>
+        <MoreHorizontal className="ml-auto h-5 w-5 text-gray-700" />
+      </header>
+
+      {post.image_url && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={mediaUrl(post.image_url)!}
+          alt={post.product_name}
+          className="aspect-square w-full rounded-lg border border-gray-200 object-cover"
+        />
+      )}
+
+      <div className="flex items-center gap-4 pt-3">
+        <Heart className="h-6 w-6 text-gray-900" />
+        <MessageCircle className="h-6 w-6 -scale-x-100 text-gray-900" />
+        <Send className="h-6 w-6 text-gray-900" />
+        <Bookmark className="ml-auto h-6 w-6 text-gray-900" />
+      </div>
+
+      <p className="pt-2 text-[13px] font-semibold text-gray-900">Be the first to like this</p>
+      <CaptionText
+        author={handle}
+        text={post.caption}
+        hashtags={post.hashtags}
+        className="pt-1 text-gray-900"
+      />
+    </article>
+  );
+}
+
 export function InstagramFeed() {
+  const { posts: realPosts, now } = usePostedPosts("instagram");
   return (
     <div className="ev-fade-up flex bg-white">
       <IgIconRail />
@@ -133,6 +187,9 @@ export function InstagramFeed() {
       <div className="mx-auto w-full max-w-[470px] px-4 pt-4 md:px-6">
         <StoriesRow />
         <div className="mt-2">
+          {realPosts.map((post) => (
+            <RealIgPostCard key={`real-${post.id}`} post={post} now={now} />
+          ))}
           {igPosts.map((post) => (
             <IgPostCard key={post.id} post={post} />
           ))}

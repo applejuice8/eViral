@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "eViral — AI marketing for small business",
   description:
-    "Tell us what you're selling. We'll market it. You approve. An Orbyte module demo.",
+    "Tell us what you're selling. We'll market it. An Orbyte module demo.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
