@@ -1,431 +1,286 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
-import { format, parseISO } from "date-fns";
-import { CheckCheck, Pause, Rocket, XCircle, Pencil, AlertTriangle } from "lucide-react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { AlertTriangle, ArrowLeft, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Textarea } from "@/components/ui/input";
 import { ImageCompare } from "@/components/review/image-compare";
-import { CaptionText } from "@/components/review/caption-text";
+import { PostPreviewCard } from "@/components/review/post-preview-card";
+import { api, ApiError, mediaUrl, type Campaign, type Post } from "@/lib/api";
+import { useScrollToHash } from "@/lib/use-scroll-to-hash";
 import {
-  PostPreviewCard,
-  validateCaption,
-  type DraftState,
-} from "@/components/review/post-preview-card";
-import { aiCaption, demoCampaign, type Platform, type ValidatorFlag } from "@/lib/data";
-import { getLastBuild, parsePriceInput, type BuildEntry } from "@/lib/campaign-build";
-import { cn, formatRM } from "@/lib/utils";
+  formatDateTime,
+  formatDay,
+  formatPrice,
+  languageLabel,
+  mytDateKey,
+  scheduleModeLabel,
+  stageLabel,
+} from "@/lib/format";
 
-type OverrideMap = Partial<Record<DraftState["platform"], string>>;
+const PLATFORM_ORDER = ["facebook", "instagram", "tiktok"];
+const BUILD_POLL_MS = 3000;
 
-const LANGUAGE_LABEL: Record<BuildEntry["facts"]["language"], string> = {
-  ms: "Bahasa Melayu",
-  en: "English",
-  mixed: "Mixed BM + EN",
-};
+type LoadState =
+  | { status: "loading" }
+  | { status: "error"; message: string; notFound: boolean }
+  | { status: "ready"; campaign: Campaign };
 
-// The build screen stores the real, generated campaign (written from what
-// the owner entered in the wizard) in sessionStorage. Until hydration
-// completes we render the demo campaign; sessionStorage is client-only.
-type BuildStatus =
-  | { phase: "loading" }
-  | { phase: "demo"; reason: "no-build" | "service-failed" }
-  | { phase: "built"; entry: BuildEntry };
-
-function readBuildStatus(): BuildStatus {
-  const last = getLastBuild();
-  if (last === null) return { phase: "demo", reason: "no-build" };
-  if ("failed" in last) return { phase: "demo", reason: "service-failed" };
-  return { phase: "built", entry: last };
+interface PostGroup {
+  key: string;
+  title: string;
+  when: string | null;
+  posts: Post[];
 }
 
-export default function ReviewPage() {
-  const router = useRouter();
-  const [fidelityTicked, setFidelityTicked] = React.useState(false);
-  const [approved, setApproved] = React.useState(false);
-  const [paused, setPaused] = React.useState(false);
-  const [publishedFirst, setPublishedFirst] = React.useState(false);
-  const [editingShared, setEditingShared] = React.useState(false);
-  const [sharedValue, setSharedValue] = React.useState(aiCaption);
-  const [status, setStatus] = React.useState<BuildStatus>({ phase: "loading" });
-  React.useEffect(() => {
-    setStatus(readBuildStatus());
-  }, []);
-
-  const buildEntry = status.phase === "built" ? status.entry : null;
-
-  // Facts actually drive the page in build mode; demo data otherwise.
-  const campaign = buildEntry
-    ? {
-        productName: buildEntry.facts.productName,
-        price: parsePriceInput(buildEntry.facts.price),
-        note: buildEntry.facts.note.trim() ? buildEntry.facts.note.trim() : null,
-        language: buildEntry.facts.language,
-        platforms: buildEntry.facts.platforms,
-        model: buildEntry.model,
-      }
-    : {
-        productName: demoCampaign.productName,
-        price: demoCampaign.price,
-        note: demoCampaign.note ?? null,
-        language: demoCampaign.language as BuildEntry["facts"]["language"],
-        platforms: demoCampaign.drafts.map((d) => d.platform),
-        model: null as string | null,
-      };
-
-  // One draft per platform the owner picked, using the generated caption.
-  const drafts: DraftState[] = buildEntry
-    ? campaign.platforms.map((platform) => {
-        const template = demoCampaign.drafts.find((d) => d.platform === platform);
-        const generated = buildEntry.captions.find((c) => c.platform === platform);
-        return {
-          ...(template ?? demoCampaign.drafts[0]),
-          id: `b-${platform}`,
-          campaignId: "cmp_current",
-          platform,
-          caption: generated?.caption ?? aiCaption,
-          hashtags: [],
-          videoIdea: generated?.videoIdea ?? undefined,
-          liveFlags: [] as ValidatorFlag[],
-        };
-      })
-    : demoCampaign.drafts.map((d) => ({ ...d, liveFlags: [] as ValidatorFlag[] }));
-
-  // Per-platform caption overrides: with a real build, the first platform
-  // shows the shared caption and the others start from their own generated
-  // variant (tracked so the badge says "AI variant", not "Edited").
-  const [overrides, setOverrides] = React.useState<OverrideMap>({});
-  const [generatedVariants, setGeneratedVariants] = React.useState<Platform[]>([]);
-  const initialised = React.useRef(false);
-  React.useEffect(() => {
-    if (!buildEntry || initialised.current) return;
-    initialised.current = true;
-    const [first, ...rest] = buildEntry.captions;
-    if (first) setSharedValue(first.caption);
-    setOverrides(
-      Object.fromEntries(rest.map((c) => [c.platform, c.caption])) as OverrideMap
-    );
-    setGeneratedVariants(rest.map((c) => c.platform));
-  }, [buildEntry]);
-
-  const price = campaign.price;
-  const sharedFlags = validateCaption(sharedValue, price);
-
-  // Effective caption + flags per post: override wins, otherwise the shared caption.
-  const effective = drafts.map((d) => {
-    const caption = overrides[d.platform] ?? sharedValue;
-    return { draft: d, caption, flags: validateCaption(caption, price) };
-  });
-  const anyBlocked = effective.some(({ flags }) =>
-    flags.some((f) => f.severity === "block")
+// Launch posts are grouped by stage; weekly/custom posts by day.
+function groupPosts(posts: Post[]): PostGroup[] {
+  const sorted = [...posts].sort(
+    (a, b) =>
+      (a.scheduled_at ?? "").localeCompare(b.scheduled_at ?? "") ||
+      PLATFORM_ORDER.indexOf(a.platform) - PLATFORM_ORDER.indexOf(b.platform)
   );
-  const canApprove = fidelityTicked && !anyBlocked && !approved;
+  const groups = new Map<string, PostGroup>();
+  for (const post of sorted) {
+    const key = post.stage ?? (post.scheduled_at ? mytDateKey(post.scheduled_at) : "unscheduled");
+    let group = groups.get(key);
+    if (!group) {
+      group = {
+        key,
+        title: post.stage ? stageLabel[post.stage] : post.scheduled_at ? formatDay(post.scheduled_at) : "Not scheduled",
+        when: post.scheduled_at ? formatDateTime(post.scheduled_at) : null,
+        posts: [],
+      };
+      groups.set(key, group);
+    }
+    group.posts.push(post);
+  }
+  // Posts are in time order, so launch stages already come out in order.
+  return [...groups.values()];
+}
 
-  function handleSharedCommit() {
-    setEditingShared(false);
-    // Shared caption changed — per-post flags re-derive automatically for
-    // posts without their own override.
+export function ReviewCampaign() {
+  const params = useParams<{ campaignId: string }>();
+  const campaignId = Number(params.campaignId);
+  const validId = Number.isInteger(campaignId) && campaignId > 0;
+  const [state, setState] = React.useState<LoadState>({ status: "loading" });
+  const [businessName, setBusinessName] = React.useState("Kek Kak Nora");
+  useScrollToHash(state.status === "ready");
+
+  React.useEffect(() => {
+    if (!validId) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    async function load() {
+      try {
+        const campaign = await api.getCampaign(campaignId);
+        if (cancelled) return;
+        setState({ status: "ready", campaign });
+        // Opened while the build is still running: keep checking.
+        if (campaign.status === "building") timer = setTimeout(load, BUILD_POLL_MS);
+      } catch (err) {
+        if (cancelled) return;
+        const notFound = err instanceof ApiError && err.status === 404;
+        setState({
+          status: "error",
+          notFound,
+          message: err instanceof ApiError ? err.message : "Couldn't load this campaign.",
+        });
+      }
+    }
+
+    load();
+    api
+      .summary()
+      .then((s) => !cancelled && setBusinessName(s.business_name))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [campaignId, validId]);
+
+  function replacePost(updated: Post) {
+    setState((s) =>
+      s.status === "ready"
+        ? {
+            ...s,
+            campaign: {
+              ...s.campaign,
+              posts: s.campaign.posts.map((p) => (p.id === updated.id ? updated : p)),
+            },
+          }
+        : s
+    );
   }
 
-  function handlePlatformEdit(id: string, caption: string) {
-    const draft = drafts.find((d) => d.id === id);
-    if (!draft) return;
-    setOverrides((o) => ({ ...o, [draft.platform]: caption }));
-    setGeneratedVariants((g) => g.filter((p) => p !== draft.platform));
+  if (!validId || (state.status === "error" && state.notFound)) {
+    return (
+      <Message title="Campaign not found" body="This campaign doesn't exist or was deleted." />
+    );
   }
-
-  function resetPlatformEdit(id: string) {
-    const draft = drafts.find((d) => d.id === id);
-    if (!draft) return;
-    setOverrides((o) => {
-      const next = { ...o };
-      delete next[draft.platform];
-      return next;
-    });
-    setGeneratedVariants((g) => g.filter((p) => p !== draft.platform));
+  if (state.status === "error") {
+    return <Message title="Couldn't load the campaign" body={state.message} />;
   }
+  if (state.status === "loading") return <ReviewSkeleton />;
 
-  const first = effective[0];
-  const overrideCount = Object.keys(overrides).length;
+  const { campaign } = state;
+  const { product, posts } = campaign;
+  const price = formatPrice(product.price_myr);
+  const original = mediaUrl(product.photo_url) ?? "";
+  const groups = groupPosts(posts);
+  const aiPost = groups
+    .flatMap((g) => g.posts)
+    .find((p) => !p.uses_original_image && p.image_url);
+  const improved = mediaUrl(aiPost?.image_url);
+  const times = posts.map((p) => p.scheduled_at).filter((t): t is string => !!t).sort();
+  const scheduledCount = posts.filter((p) => p.status === "scheduled").length;
+  const postedCount = posts.filter((p) => p.status === "posted").length;
 
   return (
     <div className="mx-auto max-w-6xl space-y-5">
-      {/* Build fallback notice — only when a build was attempted and the
-          caption service could not be reached (not on direct navigation). */}
-      {status.phase === "demo" && status.reason === "service-failed" && (
-        <div className="flex items-start gap-2.5 rounded-lg border border-warning-200 bg-warning-50 px-4 py-3">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning-600" />
-          <p className="text-[13px] leading-relaxed text-warning-800">
-            We couldn&apos;t reach the caption service during the build, so this
-            shows the demo campaign. Start the backend (e.g.{" "}
-            <code className="rounded bg-white/70 px-1">docker compose up</code>)
-            and build again to get captions written from what you entered.
-          </p>
+      <div>
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-xl font-bold text-gray-900">{product.name}</h1>
+          <Badge variant="default">{scheduleModeLabel[campaign.schedule.mode]}</Badge>
+          <Badge variant="muted">{languageLabel[campaign.language]}</Badge>
+        </div>
+        <p className="mt-1 text-[13px] text-gray-500">
+          {posts.length} post{posts.length === 1 ? "" : "s"}
+          {times.length > 0 &&
+            ` · ${formatDay(times[0])} – ${formatDay(times[times.length - 1])}`}
+          {price ? ` · ${price}` : " · No price"}
+          {product.note ? ` · ${product.note}` : ""}
+        </p>
+      </div>
+
+      {campaign.status === "building" && (
+        <div className="flex items-center gap-2.5 rounded-lg border border-info-100 bg-info-50 px-4 py-3 text-[13px] text-info-700">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          This campaign is still being built. Posts will show up here when it&apos;s done.
+        </div>
+      )}
+      {campaign.status === "failed" && (
+        <div className="flex items-start gap-2.5 rounded-lg border border-danger-200 bg-danger-50 px-4 py-3 text-[13px] text-danger-700">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          The build failed: {campaign.error ?? "unknown error"}. Start a new product to try again.
         </div>
       )}
 
-      {/* Header / campaign summary */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-xl font-bold text-gray-900">
-              {campaign.productName}
-            </h1>
-            <Badge variant="default">Launch</Badge>
-            <Badge variant="muted">{LANGUAGE_LABEL[campaign.language]}</Badge>
-            {demoCampaign.goal && !buildEntry && (
-              <Badge variant="muted">Goal: {demoCampaign.goal}</Badge>
-            )}
-          </div>
-          <p className="mt-1 text-[13px] text-gray-500">
-            {effective.length} posts ·{" "}
-            {format(parseISO(drafts[0].scheduledAt), "d MMM")} –{" "}
-            {format(parseISO(drafts[drafts.length - 1].scheduledAt), "d MMM")} ·{" "}
-            {formatRM(campaign.price)}
-            {campaign.note ? ` · ${campaign.note}` : ""}
-            {buildEntry?.model ? (
-              <>
-                {" · "}
-                <span className="text-gray-400">
-                  captions by {buildEntry.model}
-                </span>
-              </>
-            ) : null}
-          </p>
-        </div>
-        {approved && (
-          <Badge variant="success" className="px-2.5 py-1 text-xs">
-            {paused ? "Campaign paused" : "Campaign approved — posts will go out on schedule"}
-          </Badge>
-        )}
-      </div>
-
       <div className="grid gap-5 lg:grid-cols-3">
-        {/* Left: fidelity panel (image + shared AI caption) + actions */}
         <div className="space-y-4 lg:sticky lg:top-18 lg:self-start">
           <Card>
             <CardHeader>
-              <CardTitle>Does it still look like your product?</CardTitle>
+              <CardTitle>{improved ? "Your photo and the AI version" : "Your photo"}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <ImageCompare
-                original={demoCampaign.productImageOriginal}
-                improved={demoCampaign.productImageImproved}
-                productName={campaign.productName}
-              />
-
-              {/* Shared AI-generated caption — edit for all */}
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[12px] font-medium text-gray-500">
-                    AI-generated caption
-                  </p>
-                  <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700">
-                    {generatedVariants.length > 0
-                      ? "Shared base — some platforms have their own variant"
-                      : "Same on all platforms"}
-                  </span>
-                </div>
-
-                {editingShared ? (
-                  <div className="mt-2">
-                    <Textarea
-                      autoFocus
-                      rows={5}
-                      value={sharedValue}
-                      onChange={(e) => setSharedValue(e.target.value)}
-                      onBlur={handleSharedCommit}
-                      onKeyDown={(e) => {
-                        if (e.key === "Escape") {
-                          setEditingShared(false);
-                        }
-                      }}
-                      className="text-[13px]"
-                    />
-                    <p className="mt-1.5 text-[11px] text-gray-400">
-                      Editing here updates all {effective.length} posts. Posts with
-                      their own edit keep their version. Hashtags are part of the
-                      caption — type them with # and they get styled automatically.
-                    </p>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => !approved && setEditingShared(true)}
-                    className={cn(
-                      "group mt-2 block w-full text-left",
-                      approved ? "cursor-default" : "cursor-text"
-                    )}
-                    title={approved ? undefined : "Click to edit the caption for all platforms"}
-                  >
-                    <div className="relative">
-                      <CaptionText text={sharedValue} />
-                      {!approved && (
-                        <Pencil className="absolute right-0 top-0 h-3 w-3 text-gray-300 opacity-0 transition-opacity group-hover:opacity-100" />
-                      )}
-                    </div>
-                  </button>
-                )}
-
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {sharedFlags.map((f, i) => (
-                    <Badge
-                      key={i}
-                      variant={f.severity === "block" ? "danger" : "warning"}
-                      title={f.detail}
-                    >
-                      {f.severity === "block" ? "⛔" : "⚠"}{" "}
-                      {f.code.replaceAll("_", " ").toLowerCase()}
-                    </Badge>
-                  ))}
-                  {sharedFlags.length === 0 && (
-                    <Badge variant="success">✓ Facts check passed</Badge>
-                  )}
-                </div>
-                <p className="mt-1.5 text-[11px] text-gray-400">
-                  {overrideCount > 0
-                    ? `${effective.length - overrideCount} of ${effective.length} posts follow this caption.`
-                    : `Applies to all ${effective.length} posts.`}
+              <ImageCompare original={original} improved={improved} productName={product.name} />
+              {!improved && (
+                <p className="text-[11px] text-gray-400">
+                  Image editing was off for this campaign, so posts use your original photo.
                 </p>
-              </div>
-
-              <label
-                className={cn(
-                  "flex cursor-pointer items-start gap-2.5 rounded-lg border p-3 transition-colors",
-                  fidelityTicked
-                    ? "border-success-600 bg-success-50"
-                    : "border-gray-200 bg-white hover:border-gray-300"
-                )}
-              >
-                <Checkbox
-                  checked={fidelityTicked}
-                  onCheckedChange={setFidelityTicked}
-                  className="mt-0.5"
-                />
-                <span className="text-[13px] leading-snug text-gray-700">
-                  <span className="font-medium">
-                    This still looks like my product.
-                  </span>{" "}
-                  I&apos;m happy for the AI-edited image to represent it.
-                </span>
-              </label>
+              )}
+              {product.confirmed_attributes && product.confirmed_attributes.length > 0 && (
+                <div>
+                  <p className="mb-1.5 text-[12px] font-medium text-gray-500">
+                    Facts you confirmed
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {product.confirmed_attributes.map((a) => (
+                      <span
+                        key={a}
+                        className="rounded bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700"
+                      >
+                        {a}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="flex flex-col gap-2.5 p-4">
-              <Button
-                variant="success"
-                size="lg"
-                className="w-full"
-                disabled={!canApprove}
-                onClick={() => setApproved(true)}
-                title={
-                  !fidelityTicked
-                    ? "Tick “This still looks like my product” first"
-                    : anyBlocked
-                      ? "Fix blocked posts first"
-                      : undefined
-                }
-              >
-                <CheckCheck className="h-4 w-4" />
-                {approved ? "Campaign approved" : "Approve campaign"}
-              </Button>
-              {!approved && (
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => router.push("/")}
-                >
-                  <XCircle className="h-4 w-4" />
-                  Reject & send back
-                </Button>
-              )}
-              {approved && !publishedFirst && (
-                <Button
-                  className="w-full"
-                  onClick={() => setPublishedFirst(true)}
-                >
-                  <Rocket className="h-4 w-4" />
-                  Publish first post now
-                </Button>
-              )}
-              {publishedFirst && (
-                <p className="rounded-lg bg-success-50 px-3 py-2 text-center text-xs font-medium text-success-700">
-                  🎉 First post published (mock publisher) — see the calendar.
-                </p>
-              )}
-              {approved && (
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => setPaused((p) => !p)}
-                >
-                  <Pause className="h-4 w-4" />
-                  {paused ? "Resume campaign" : "Pause campaign"}
-                </Button>
-              )}
-              <p className="text-center text-[11px] leading-relaxed text-gray-400">
-                Nothing publishes without your approval. You can pause or cancel
-                at any time.
+            <CardContent className="space-y-2 p-4 text-[13px] text-gray-600">
+              <p>
+                <span className="font-semibold text-gray-900">{scheduledCount}</span> scheduled ·{" "}
+                <span className="font-semibold text-gray-900">{postedCount}</span> posted
               </p>
+              <p className="text-[12px] leading-relaxed text-gray-400">
+                Posts go out on their own at the times shown. Click a caption to edit it,
+                or use Publish now to send a post straight away to the demo social pages.
+              </p>
+              <Link href="/calendar">
+                <Button variant="outline" size="sm" className="mt-1 w-full">
+                  Open calendar
+                </Button>
+              </Link>
             </CardContent>
           </Card>
         </div>
 
-        {/* Right: per-platform preview cards */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:col-span-2">
-          {effective.map(({ draft, caption, flags }) => {
-            const overridden = overrides[draft.platform] !== undefined;
-            const isGenerated = generatedVariants.includes(draft.platform);
-            return (
-              <div key={draft.id} className="space-y-1.5">
-                {overridden && (
-                  <div className="flex items-center justify-between px-1">
-                    <span
-                      className={cn(
-                        "rounded-full px-2 py-0.5 text-[11px] font-medium",
-                        isGenerated
-                          ? "bg-brand-50 text-brand-700"
-                          : "bg-warning-50 text-warning-700"
-                      )}
-                    >
-                      {isGenerated
-                        ? `AI variant for ${draft.platform}`
-                        : `Edited for ${draft.platform} only`}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => resetPlatformEdit(draft.id)}
-                      disabled={approved}
-                      className="text-[11px] font-medium text-gray-400 underline-offset-2 hover:text-gray-600 hover:underline disabled:opacity-40"
-                    >
-                      Use shared caption
-                    </button>
-                  </div>
-                )}
-                <PostPreviewCard
-                  draft={
-                    publishedFirst && draft.id === first.draft.id
-                      ? { ...draft, liveFlags: flags, status: "published" }
-                      : { ...draft, liveFlags: flags }
-                  }
-                  caption={caption}
-                  image={demoCampaign.productImageImproved}
-                  price={price}
-                  approved={approved}
-                  editLabel={`Click to edit the ${draft.platform} caption only`}
-                  onEdit={handlePlatformEdit}
-                />
+        <div className="space-y-6 lg:col-span-2">
+          {groups.map((group) => (
+            <section key={group.key} className="space-y-2.5">
+              <div className="flex items-baseline justify-between gap-2">
+                <h2 className="text-[14px] font-semibold text-gray-900">{group.title}</h2>
+                {group.when && <p className="text-[12px] text-gray-500">{group.when}</p>}
               </div>
-            );
-          })}
+              <div className="grid gap-4 sm:grid-cols-2">
+                {group.posts.map((post) => (
+                  <PostPreviewCard
+                    key={post.id}
+                    post={post}
+                    businessName={businessName}
+                    onChange={replacePost}
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
+          {posts.length === 0 && campaign.status !== "building" && (
+            <p className="rounded-xl border border-gray-200 bg-white px-4 py-10 text-center text-[13px] text-gray-500">
+              This campaign has no posts.
+            </p>
+          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+export function ReviewSkeleton() {
+  return (
+    <div className="mx-auto max-w-6xl space-y-4">
+      <div className="h-8 w-72 animate-pulse rounded-lg bg-gray-200" />
+      <div className="grid gap-5 lg:grid-cols-3">
+        <div className="h-96 animate-pulse rounded-xl bg-gray-100" />
+        <div className="h-96 animate-pulse rounded-xl bg-gray-100 lg:col-span-2" />
+      </div>
+    </div>
+  );
+}
+
+function Message({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="mx-auto flex max-w-md flex-col items-center gap-3 py-16 text-center">
+      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100">
+        <AlertTriangle className="h-6 w-6 text-gray-400" />
+      </span>
+      <div>
+        <p className="text-sm font-semibold text-gray-900">{title}</p>
+        <p className="mt-1 text-[13px] text-gray-500">{body}</p>
+      </div>
+      <Link href="/">
+        <Button size="sm" variant="outline">
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Back to dashboard
+        </Button>
+      </Link>
     </div>
   );
 }

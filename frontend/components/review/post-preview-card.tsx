@@ -2,128 +2,130 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { format, parseISO } from "date-fns";
-import { Heart, MessageCircle, Send, Bookmark, Clock, Clapperboard, Pencil } from "lucide-react";
-import { cn, formatRM } from "@/lib/utils";
+import Link from "next/link";
+import {
+  Bookmark,
+  Clapperboard,
+  Clock,
+  ExternalLink,
+  Heart,
+  Loader2,
+  MessageCircle,
+  Pencil,
+  Rocket,
+  Send,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/input";
-import { FlagsBadges, StatusBadge } from "@/components/status-badge";
+import { Button } from "@/components/ui/button";
+import { Input, Textarea } from "@/components/ui/input";
+import { StatusBadge } from "@/components/status-badge";
 import { PlatformIcon } from "@/components/platform-icon";
 import { CaptionText } from "@/components/review/caption-text";
-import {
-  owner,
-  platformLabel,
-  stageLabel,
-  type PostDraft,
-  type ValidatorFlag,
-} from "@/lib/data";
+import { api, ApiError, mediaUrl, type Post } from "@/lib/api";
+import { formatDateTime, handleOf, platformLabel, stageLabel } from "@/lib/format";
 
-const PRICE_RE = /RM\s?(\d+(?:\.\d{1,2})?)/gi;
-
-// Demo validator: re-checks RM amounts against the product price on every edit.
-export function validateCaption(
-  caption: string,
-  price: number | null
-): ValidatorFlag[] {
-  const flags: ValidatorFlag[] = [];
-  const found = [...caption.matchAll(PRICE_RE)].map((m) => Number(m[1]));
-  if (price == null && found.length > 0) {
-    flags.push({
-      code: "PRICE_NOT_PROVIDED",
-      severity: "block",
-      detail: "No price was entered for this product — posts must not mention one.",
-    });
-  } else if (price != null) {
-    for (const p of found) {
-      if (p !== price) {
-        flags.push({
-          code: "PRICE_MISMATCH",
-          severity: "block",
-          detail: `RM${p} doesn't match the product price (${formatRM(price)}).`,
-        });
-      }
-    }
-  }
-  for (const phrase of ["guaranteed", "cure", "no. 1", "#1"]) {
-    if (caption.toLowerCase().includes(phrase)) {
-      flags.push({
-        code: "BANNED_CLAIM",
-        severity: "block",
-        detail: `"${phrase}" is on the banned-claims list.`,
-      });
-    }
-  }
-  return flags;
+/** "#a #b" or "a, b" -> ["#a", "#b"] */
+export function parseHashtags(raw: string): string[] {
+  const tags = raw
+    .split(/[\s,]+/)
+    .map((t) => t.replace(/^#+/, "").trim())
+    .filter(Boolean)
+    .map((t) => `#${t}`);
+  return [...new Set(tags)];
 }
 
-export interface DraftState extends PostDraft {
-  liveFlags: ValidatorFlag[];
-}
-
-// Buffer-composer-style real post preview card with inline caption editing.
-// `caption` is the effective caption for this platform (shared or overridden);
-// hashtags are part of the caption text and styled when detected.
+// A post as it will look on the platform, with inline caption editing and
+// a "Publish now" button for scheduled posts.
 export function PostPreviewCard({
-  draft,
-  caption,
-  image,
-  price,
-  approved,
-  editLabel,
-  onEdit,
+  post,
+  businessName,
+  onChange,
 }: {
-  draft: DraftState;
-  caption: string;
-  image: string;
-  price: number | null;
-  approved: boolean;
-  editLabel: string;
-  onEdit: (id: string, caption: string, flags: ValidatorFlag[]) => void;
+  post: Post;
+  businessName: string;
+  onChange: (post: Post) => void;
 }) {
   const [editing, setEditing] = React.useState(false);
-  const [value, setValue] = React.useState(caption);
-  const blocked = draft.liveFlags.some((f) => f.severity === "block");
+  const [caption, setCaption] = React.useState(post.caption);
+  const [tags, setTags] = React.useState(post.hashtags.join(" "));
+  const [busy, setBusy] = React.useState<"save" | "publish" | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
 
-  // Keep the draft textarea in sync when the caption changes externally
-  // (e.g. "edit for all" on the left panel).
-  React.useEffect(() => {
-    if (!editing) setValue(caption);
-  }, [caption, editing]);
+  const canEdit = post.status !== "posted";
+  const image = mediaUrl(post.image_url);
 
-  function commit() {
-    setEditing(false);
-    if (value !== caption) {
-      onEdit(draft.id, value, validateCaption(value, price));
+  function startEdit() {
+    if (!canEdit) return;
+    setCaption(post.caption);
+    setTags(post.hashtags.join(" "));
+    setError(null);
+    setEditing(true);
+  }
+
+  async function save() {
+    const hashtags = parseHashtags(tags);
+    if (caption.trim() === post.caption && hashtags.join(" ") === post.hashtags.join(" ")) {
+      setEditing(false);
+      return;
+    }
+    if (!caption.trim()) {
+      setError("The caption can't be empty.");
+      return;
+    }
+    setBusy("save");
+    setError(null);
+    try {
+      onChange(await api.updatePost(post.id, { caption: caption.trim(), hashtags }));
+      setEditing(false);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't save the caption.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function publishNow() {
+    setBusy("publish");
+    setError(null);
+    try {
+      onChange(await api.publishNow(post.id));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't publish the post.");
+    } finally {
+      setBusy(null);
     }
   }
 
   return (
     <div
+      id={`post-${post.id}`}
       className={cn(
         "overflow-hidden rounded-xl border bg-white shadow-xs",
-        blocked ? "border-danger-200 border-l-4 border-l-danger-600" : "border-gray-200"
+        post.status === "failed" ? "border-danger-200" : "border-gray-200"
       )}
     >
       {/* phone-frame header */}
       <div className="flex items-center gap-2.5 border-b border-gray-100 px-3.5 py-2.5">
-        <PlatformIcon platform={draft.platform} />
+        <PlatformIcon platform={post.platform} />
         <div className="min-w-0 flex-1 leading-tight">
-          <p className="truncate text-[13px] font-semibold text-gray-900">
-            {owner.business}
-          </p>
+          <p className="truncate text-[13px] font-semibold text-gray-900">{businessName}</p>
           <p className="text-[11px] text-gray-400">
-            {platformLabel[draft.platform]} · {stageLabel[draft.stage]}
+            {platformLabel[post.platform]}
+            {post.stage ? ` · ${stageLabel[post.stage]}` : ""}
           </p>
         </div>
-        <StatusBadge status={blocked ? "blocked" : approved ? "approved" : draft.status} />
+        <StatusBadge status={post.status} />
       </div>
 
       {/* media */}
       <div className="relative aspect-square w-full bg-gray-50">
-        <Image src={image} alt="Post image" fill className="object-cover" />
+        {image && (
+          <Image src={image} alt="Post image" fill unoptimized className="object-cover" />
+        )}
         <span className="absolute left-2 top-2">
           <Badge variant="muted" className="bg-black/55 text-white">
-            AI-edited image
+            {post.uses_original_image ? "Your photo" : "AI image"}
           </Badge>
         </span>
       </div>
@@ -136,67 +138,108 @@ export function PostPreviewCard({
         <Bookmark className="ml-auto h-4.5 w-4.5" />
       </div>
 
-      {/* caption (hashtags inline, styled) */}
+      {/* caption, hashtags on their own line */}
       <div className="px-3.5 py-2.5">
         {editing ? (
-          <Textarea
-            autoFocus
-            rows={4}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onBlur={commit}
-            onKeyDown={(e) => e.key === "Escape" && (setValue(caption), setEditing(false))}
-            className="text-[13px]"
-          />
+          <div className="space-y-2">
+            <Textarea
+              autoFocus
+              rows={5}
+              aria-label="Caption"
+              value={caption}
+              onChange={(e) => setCaption(e.target.value)}
+              onKeyDown={(e) => e.key === "Escape" && setEditing(false)}
+              className="text-[13px]"
+            />
+            <Input
+              aria-label="Hashtags"
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+              placeholder="#KekKakNora #KekLapis"
+              className="h-8 text-xs"
+            />
+            <div className="flex justify-end gap-2">
+              <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
+                Cancel
+              </Button>
+              <Button size="sm" onClick={save} disabled={busy !== null}>
+                {busy === "save" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                Save
+              </Button>
+            </div>
+          </div>
         ) : (
           <button
             type="button"
-            onClick={() => !approved && (setValue(caption), setEditing(true))}
+            onClick={startEdit}
             className={cn(
               "group block w-full text-left",
-              approved ? "cursor-default" : "cursor-text"
+              canEdit ? "cursor-text" : "cursor-default"
             )}
-            title={approved ? undefined : editLabel}
+            title={canEdit ? "Click to edit this caption" : undefined}
           >
             <div className="relative">
               <CaptionText
-                text={
-                  owner.business.toLowerCase().replaceAll(" ", "") + " " + caption
-                }
+                author={handleOf(businessName)}
+                text={post.caption}
+                hashtags={post.hashtags}
               />
-              {!approved && (
+              {canEdit && (
                 <Pencil className="absolute right-0 top-0 h-3 w-3 text-gray-300 opacity-0 transition-opacity group-hover:opacity-100" />
               )}
             </div>
           </button>
         )}
-        {draft.videoIdea && (
+        {post.video_idea && (
           <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-gray-50 px-2.5 py-2 text-[11px] text-gray-500">
             <Clapperboard className="mt-0.5 h-3 w-3 shrink-0" />
-            Video idea: {draft.videoIdea}
+            Video idea: {post.video_idea}
           </p>
         )}
       </div>
 
-      {/* footer: time + validator */}
+      {/* footer: time + actions */}
       <div className="space-y-2 border-t border-gray-100 px-3.5 py-2.5">
         <div className="flex items-center gap-1.5 text-[11px] text-gray-500">
           <Clock className="h-3 w-3" />
-          {format(parseISO(draft.scheduledAt), "EEE d MMM, h:mm a")}
+          {post.status === "posted" && post.posted_at
+            ? `Posted ${formatDateTime(post.posted_at)}`
+            : post.scheduled_at
+              ? formatDateTime(post.scheduled_at)
+              : "Not scheduled"}
         </div>
-        {draft.whyThisTime && (
-          <p className="text-[11px] leading-snug text-gray-400">
-            {draft.whyThisTime}
+        {post.why_this_time && post.status !== "posted" && (
+          <p className="text-[11px] leading-snug text-gray-400">{post.why_this_time}</p>
+        )}
+        {error && (
+          <p role="alert" className="rounded-md bg-danger-50 px-2.5 py-1.5 text-[11px] text-danger-700">
+            {error}
           </p>
         )}
-        <div className="flex flex-wrap gap-1.5">
-          <FlagsBadges flags={draft.liveFlags} />
-        </div>
-        {blocked && (
-          <p className="rounded-md bg-danger-50 px-2.5 py-1.5 text-[11px] text-danger-700">
-            This post is blocked and can&apos;t be approved until fixed. Edit the
-            caption to resolve it.
-          </p>
+        {post.status === "scheduled" && !editing && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-full"
+            onClick={publishNow}
+            disabled={busy !== null}
+          >
+            {busy === "publish" ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Rocket className="h-3.5 w-3.5" />
+            )}
+            Publish now
+          </Button>
+        )}
+        {post.status === "posted" && post.published_url && (
+          <Link
+            href={post.published_url}
+            className="flex items-center gap-1 text-[11px] font-medium text-brand-600 hover:text-brand-700"
+          >
+            View on {platformLabel[post.platform]}
+            <ExternalLink className="h-3 w-3" />
+          </Link>
         )}
       </div>
     </div>

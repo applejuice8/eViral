@@ -11,8 +11,33 @@ import {
   Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { owner } from "@/lib/data";
+import { api } from "@/lib/api";
+import { initials } from "@/lib/format";
 import { Avatar } from "@/components/ui/avatar";
+
+interface Owner {
+  name: string;
+  business: string;
+}
+
+// Shown until /summary answers (and if the backend is down).
+const FALLBACK_OWNER: Owner = { name: "Aisha Rahman", business: "Kek Kak Nora" };
+const TAGLINE = "Home bakery · Halal certified";
+
+function useOwner(): Owner {
+  const [owner, setOwner] = React.useState<Owner>(FALLBACK_OWNER);
+  React.useEffect(() => {
+    let cancelled = false;
+    api
+      .summary()
+      .then((s) => !cancelled && setOwner({ name: s.owner_name, business: s.business_name }))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return owner;
+}
 
 const nav = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -93,7 +118,7 @@ function SocialNavItems({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-function SidebarContent() {
+function SidebarContent({ owner }: { owner: Owner }) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2 px-5 pt-5 pb-6">
@@ -122,14 +147,12 @@ function SidebarContent() {
       <div className="mt-auto px-3 pb-4">
         <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
           <div className="flex items-center gap-2.5">
-            <Avatar initials="KN" size="md" />
+            <Avatar initials={initials(owner.business)} size="md" />
             <div className="min-w-0 leading-tight">
               <p className="truncate text-[13px] font-semibold text-gray-900">
                 {owner.business}
               </p>
-              <p className="truncate text-[11px] text-gray-500">
-                {owner.businessTagline}
-              </p>
+              <p className="truncate text-[11px] text-gray-500">{TAGLINE}</p>
             </div>
           </div>
         </div>
@@ -139,11 +162,12 @@ function SidebarContent() {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const owner = useOwner();
   return (
     <div className="flex min-h-dvh flex-1">
       {/* Sidebar (desktop) */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 border-r border-gray-200 bg-white md:block">
-        <SidebarContent />
+        <SidebarContent owner={owner} />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col md:pl-60">
@@ -151,13 +175,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-gray-200 bg-white/90 px-4 backdrop-blur md:px-6">
           <p className="text-[13px] text-gray-500">
             <span className="font-medium text-gray-900">{owner.business}</span>
-            <span className="hidden sm:inline"> · {owner.businessTagline}</span>
+            <span className="hidden sm:inline"> · {TAGLINE}</span>
           </p>
           <div className="flex items-center gap-2.5">
             <span className="hidden text-[13px] text-gray-600 sm:block">
               {owner.name}
             </span>
-            <Avatar initials={owner.initials} size="md" />
+            <Avatar initials={initials(owner.name)} size="md" />
           </div>
         </header>
 
