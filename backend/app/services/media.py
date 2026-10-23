@@ -106,6 +106,13 @@ def _persist(
     return file_name, f"/media/{file_name}"
 
 
+def save_result(
+    provider: MediaProvider, task: MediaTask, settings: Settings, kind: str
+) -> tuple[str, str]:
+    """Wait for a submitted task and store its image. Returns (file name, /media URL)."""
+    return _persist(provider, task, settings, kind)
+
+
 def _respond(
     *,
     kind: str,

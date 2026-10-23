@@ -3,10 +3,14 @@
 Facts discipline (TECHNICAL_IMPLEMENTATION.md §7): the model sees ONLY the
 owner-entered fields on the request. It must never invent prices, dates,
 flavours, certifications or awards; if price is absent it must not mention
-one. The validator service (future) re-checks all of this.
+one. The campaign pipeline's checks step strips a price if none was given.
 """
 
+from dataclasses import dataclass
+from decimal import Decimal
+
 from pydantic import ValidationError
+
 from app.adapters.llm import LLMError, LLMProvider
 from app.schemas.captions import (
     CaptionRequest,
@@ -14,6 +18,7 @@ from app.schemas.captions import (
     GeneratedCaption,
     Platform,
 )
+from app.schemas.campaigns import CampaignCaptions, PostCaption
 
 _SYSTEM_PROMPT = """You write social media posts for a small Malaysian business.
 Use ONLY the facts in <facts>. Do not invent prices, discounts, dates, flavours,
@@ -100,3 +105,91 @@ def generate_captions(request: CaptionRequest, provider: LLMProvider) -> Caption
     raw = provider.chat_json(_SYSTEM_PROMPT, _user_payload(request))
     captions = _parse_captions(raw, request)
     return CaptionResponse(captions=captions, model=provider.model_name)
+
+
+# -- campaign captions (one call for every post) ------------------------------
+
+CAMPAIGN_PROMPT = """You write social media posts for a small Malaysian business.
+Use ONLY the facts in "facts". Do not invent prices, discounts, dates, flavours,
+ingredients, sizes, certifications, awards or delivery details. If a fact is
+missing, leave it out. "seen_in_photo" lists what the owner confirmed is in the
+photo; you may describe those things.
+If facts.price_myr is null, do not mention any price. If it is set, write it
+exactly as "RM" + the number (e.g. RM65).
+Language: 'ms' = Bahasa Melayu, 'en' = English, 'mixed' = natural Malaysian
+mix of BM and English.
+Write one post for every item in "posts" and keep its "id". Match the stage:
+- teaser: build curiosity, "coming soon" feel, don't give everything away
+- launch: it is available now
+- reminder: friendly nudge for people who missed it
+- last_chance: last call, gentle urgency, no made-up deadlines
+- null: a normal post in a regular schedule; vary the angle between posts
+Platform style:
+- facebook: friendly, 1-3 short paragraphs
+- instagram: punchy, 1-2 short paragraphs, a few emojis are fine
+- tiktok: one very short hook line, plus "video_idea": one line describing a
+  simple clip the owner can film on a phone
+Never put hashtags in "caption". Put them in "hashtags", each starting with #
+(facebook 2-4, instagram 5-10, tiktok 3-5).
+Posts for the same stage on different platforms must not be copies.
+Never promise results. Never mention customers by name.
+Respond with JSON only, exactly this shape:
+{"posts": [{"id": "1", "caption": "...", "hashtags": ["#..."], "video_idea": "..." or null}]}"""
+
+
+def price_text(price: Decimal) -> str:
+    """65.00 -> "65", 65.50 -> "65.50"."""
+    return str(int(price)) if price == price.to_integral_value() else f"{price:.2f}"
+
+
+@dataclass
+class CaptionSlot:
+    """One post the model must write."""
+
+    id: str
+    platform: str
+    stage: str | None
+    date: str  # e.g. "Sat 25 Oct", Malaysia time
+
+
+def campaign_payload(
+    *,
+    business_name: str,
+    product_name: str,
+    price_myr: Decimal | None,
+    note: str | None,
+    seen_in_photo: list[str],
+    language: str,
+    slots: list[CaptionSlot],
+) -> dict:
+    return {
+        "facts": {
+            "business_name": business_name,
+            "product_name": product_name,
+            "price_myr": None if price_myr is None else price_text(price_myr),
+            "note": note,
+            "seen_in_photo": seen_in_photo,
+        },
+        "language": language,
+        "posts": [
+            {"id": s.id, "platform": s.platform, "stage": s.stage, "date": s.date}
+            for s in slots
+        ],
+    }
+
+
+def write_campaign_captions(
+    payload: dict, provider: LLMProvider
+) -> tuple[dict[str, PostCaption], str]:
+    """One LLM call for every post. Returns ({post id: caption}, model)."""
+    wanted = [p["id"] for p in payload["posts"]]
+
+    def parse(raw: dict) -> dict[str, PostCaption]:
+        result = CampaignCaptions.model_validate(raw)
+        by_id = {p.id: p for p in result.posts}
+        missing = [i for i in wanted if i not in by_id]
+        if missing:
+            raise ValueError(f"model skipped posts {', '.join(missing)}")
+        return {i: by_id[i] for i in wanted}
+
+    return provider.text_json(CAMPAIGN_PROMPT, payload, parse)
