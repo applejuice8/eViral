@@ -171,7 +171,7 @@ export function ReviewCampaign() {
         </div>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <div className="space-y-4 lg:sticky lg:top-18 lg:self-start">
           <Card>
             <CardHeader>
@@ -230,7 +230,7 @@ export function ReviewCampaign() {
                 <h2 className="text-[14px] font-semibold text-gray-900">{group.title}</h2>
                 {group.when && <p className="text-[12px] text-gray-500">{group.when}</p>}
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {group.posts.map((post) => (
                   <PostPreviewCard
                     key={post.id}
@@ -257,7 +257,7 @@ export function ReviewSkeleton() {
   return (
     <div className="mx-auto max-w-6xl space-y-4">
       <div className="h-8 w-72 animate-pulse rounded-lg bg-gray-200" />
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <div className="h-96 animate-pulse rounded-xl bg-gray-100" />
         <div className="h-96 animate-pulse rounded-xl bg-gray-100 lg:col-span-2" />
       </div>

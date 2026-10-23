@@ -15,9 +15,11 @@ import {
   endOfMonth,
   endOfWeek,
   format,
+  isBefore,
   isSameMonth,
   isToday,
   startOfMonth,
+  startOfToday,
   startOfWeek,
 } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -219,7 +221,7 @@ export function StepSchedule({
       {/* Schedule mode */}
       <div>
         <Label className="mb-2 block">How should we schedule it?</Label>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {MODES.map((m) => {
             const active = data.mode === m.id;
             return (
@@ -354,8 +356,9 @@ export function StepSchedule({
             const selected = selectedSet.has(iso);
             const today = isToday(day);
             // Out-of-month cells are display-only: clickable dim cells used to
-            // silently move the start date into another month.
-            const dim = !isSameMonth(day, cursor);
+            // silently move the start date into another month. Past days can't
+            // be picked either: the backend rejects schedules with no future posts.
+            const dim = !isSameMonth(day, cursor) || isBefore(day, startOfToday());
 
             let chip: string | null = null;
             if (data.mode === "launch_sequence") {

@@ -101,7 +101,7 @@ export function StepTellUs({
         </Button>
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-5">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-5">
         {/* Media panel */}
         <div className="sm:col-span-2">
           <Label className="mb-2 block">Product photo</Label>

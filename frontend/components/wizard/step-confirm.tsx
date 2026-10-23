@@ -49,7 +49,7 @@ export function StepConfirm({
   }
 
   return (
-    <div className="grid gap-6 sm:grid-cols-5">
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-5">
       <div className="sm:col-span-2">
         <div className="relative aspect-square w-full overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
           {photoUrl && (
