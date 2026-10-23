@@ -1,0 +1,54 @@
+# Run the full eViral stack: FastAPI backend + Next.js frontend.
+#
+#   docker compose up --build
+#
+# Frontend: http://localhost:3000  (proxies /backend/* to the API)
+# Backend:  http://localhost:8000  (GET /health)
+#
+# Compose auto-loads the repo-root .env for variable interpolation, so
+# DATABASE_URL / OPENROUTER_API_KEY there are passed through to containers.
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      # Root .env's DATABASE_URL passes through (e.g. Neon Postgres).
+      # Without it, use a persistent SQLite file on a named volume.
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////data/eviral.db}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      LLM_MODEL_TEXT: ${LLM_MODEL_TEXT:-}
+      DEBUG: ${DEBUG:-false}
+    volumes:
+      - backend-data:/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        BACKEND_ORIGIN: http://backend:8000
+    ports:
+      - "3000:3000"
+    environment:
+      # Rewrite target for /backend/* inside the compose network.
+      BACKEND_ORIGIN: http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  backend-data:

@@ -8,6 +8,8 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+_DEFAULT_TEXT_MODEL = "nvidia/nemotron-3.5-super-vl:free"
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -27,7 +29,13 @@ class Settings(BaseSettings):
     # Free-tier model used for caption generation; override in env.
     # Free model slugs rotate often on OpenRouter — verify on
     # https://openrouter.ai/models?max_price=0 if this starts failing.
-    llm_model_text: str = "nvidia/nemotron-3.5-super-vl:free"
+    llm_model_text: str = _DEFAULT_TEXT_MODEL
+
+    def model_post_init(self, __context) -> None:
+        # Docker/compose setups often export blank vars (LLM_MODEL_TEXT=);
+        # a blank value must not override the default.
+        if not self.llm_model_text.strip():
+            self.llm_model_text = _DEFAULT_TEXT_MODEL
 
 
 @lru_cache

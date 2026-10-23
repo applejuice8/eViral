@@ -70,14 +70,20 @@ def _user_payload(request: CaptionRequest) -> dict:
 
 
 def _parse_captions(raw: dict, request: CaptionRequest) -> list[GeneratedCaption]:
-    """Validate model output; keep only requested platforms, in request order."""
-    try:
-        parsed = [
-            GeneratedCaption.model_validate(item)
-            for item in raw.get("captions", [])
-        ]
-    except (AttributeError, TypeError, ValidationError) as exc:
-        raise LLMError(f"Model output did not match the expected shape: {exc}") from exc
+    """Validate model output; keep only requested platforms, in request order.
+
+    Tolerates model noise: entries that don't validate or name a platform we
+    didn't ask for are skipped. Every *requested* platform must be present.
+    """
+    parsed: list[GeneratedCaption] = []
+    if not isinstance(raw, dict):
+        raise LLMError(f"Model returned non-object JSON: {raw!r}")
+    for item in raw.get("captions", []):
+        try:
+            cap = GeneratedCaption.model_validate(item)
+        except ValidationError:
+            continue
+        parsed.append(cap)
 
     by_platform: dict[Platform, GeneratedCaption] = {}
     for cap in parsed:
