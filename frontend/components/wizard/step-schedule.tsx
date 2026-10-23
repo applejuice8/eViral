@@ -91,35 +91,38 @@ export function StepSchedule({
   onChange,
 }: {
   data: ScheduleData;
-  onChange: (patch: Partial<ScheduleData>) => void;
+  /** Accepts a patch object or an updater for batch-safe toggles (rapid clicks never lose state). */
+  onChange: (
+    patch: Partial<ScheduleData> | ((prev: ScheduleData) => Partial<ScheduleData>)
+  ) => void;
 }) {
   // Current time is only available on the client (cacheComponents prerender).
   const [cursor, setCursor] = React.useState<Date | null>(null);
   React.useEffect(() => setCursor(new Date()), []);
 
   function togglePlatform(p: Platform) {
-    onChange({
-      platforms: data.platforms.includes(p)
-        ? data.platforms.filter((x) => x !== p)
-        : [...data.platforms, p],
-    });
+    onChange((prev) => ({
+      platforms: prev.platforms.includes(p)
+        ? prev.platforms.filter((x) => x !== p)
+        : [...prev.platforms, p],
+    }));
   }
   function toggleDay(d: string) {
-    onChange({
-      days: data.days.includes(d)
-        ? data.days.filter((x) => x !== d)
-        : [...data.days, d],
-    });
+    onChange((prev) => ({
+      days: prev.days.includes(d)
+        ? prev.days.filter((x) => x !== d)
+        : [...prev.days, d],
+    }));
   }
 
   function toggleDate(day: Date) {
     const iso = format(day, "yyyy-MM-dd");
     if (data.mode === "custom") {
-      onChange({
-        dates: data.dates.includes(iso)
-          ? data.dates.filter((x) => x !== iso)
-          : [...data.dates, iso].sort(),
-      });
+      onChange((prev) => ({
+        dates: prev.dates.includes(iso)
+          ? prev.dates.filter((x) => x !== iso)
+          : [...prev.dates, iso].sort(),
+      }));
     } else {
       // Launch & weekly use a single start date.
       onChange({ dates: [iso] });
@@ -175,17 +178,38 @@ export function StepSchedule({
     );
   }
 
-  const slots = publishSlots();
-  const slotByIso = new Map(
-    slots.map((s) => [format(s.date, "yyyy-MM-dd"), s])
-  );
-  const selectedSet = new Set(data.dates);
-
   // Month grid, weeks starting Monday — same layout as the Calendar tab.
   const gridStart = startOfWeek(startOfMonth(cursor), { weekStartsOn: 1 });
   const gridEnd = endOfWeek(endOfMonth(cursor), { weekStartsOn: 1 });
   const monthDays: Date[] = [];
   for (let d = gridStart; d <= gridEnd; d = addDays(d, 1)) monthDays.push(d);
+
+  const slots = publishSlots();
+  const selectedSet = new Set(data.dates);
+
+  // Launch sequence slots, keyed by date for the grid chips.
+  const slotByIso = new Map(
+    data.mode === "launch_sequence"
+      ? slots.map((s) => [format(s.date, "yyyy-MM-dd"), s])
+      : []
+  );
+
+  /**
+   * Weekly cadence chips are anchored to WEEKDAYS, not to the start date:
+   * every in-month date matching a chosen weekday on/after the start gets a
+   * chip. Clicking a date only moves the start boundary, so highlights never
+   * "run away" when clicking around.
+   */
+  const recurringSet = new Set<string>();
+  if (data.mode === "weekly" && data.dates[0] && data.days.length > 0) {
+    const start = data.dates[0];
+    for (const day of monthDays) {
+      const iso = format(day, "yyyy-MM-dd");
+      if (iso >= start && data.days.includes(format(day, "EEE"))) {
+        recurringSet.add(iso);
+      }
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -325,22 +349,40 @@ export function StepSchedule({
           {monthDays.map((day) => {
             const iso = format(day, "yyyy-MM-dd");
             const selected = selectedSet.has(iso);
-            const slot = slotByIso.get(iso);
             const today = isToday(day);
+            // Out-of-month cells are display-only: clickable dim cells used to
+            // silently move the start date into another month.
             const dim = !isSameMonth(day, cursor);
+
+            let chip: string | null = null;
+            if (data.mode === "launch_sequence") {
+              chip = slotByIso.get(iso)?.label ?? null;
+            } else if (data.mode === "weekly") {
+              chip = recurringSet.has(iso) ? format(day, "EEE") : null;
+            }
+            if (selected) {
+              chip =
+                data.mode === "custom"
+                  ? (data.time || "20:00")
+                  : (chip ?? "Start");
+            }
+
             return (
               <button
                 key={iso}
                 type="button"
-                onClick={() => toggleDate(day)}
+                onClick={dim ? undefined : () => toggleDate(day)}
+                aria-disabled={dim || undefined}
                 className={cn(
-                  "min-h-14 cursor-pointer rounded-lg border p-1 text-left align-top transition-colors",
+                  "min-h-14 rounded-lg border p-1 text-left align-top transition-colors",
+                  dim ? "cursor-default" : "cursor-pointer",
                   selected
                     ? "border-brand-500 bg-brand-50/60 ring-1 ring-brand-500"
-                    : slot
-                      ? "border-brand-200 bg-brand-50/40 hover:border-brand-300"
-                      : "border-gray-200 bg-white hover:border-gray-300",
-                  dim && "opacity-40",
+                    : chip
+                      ? "border-brand-200 bg-brand-50/40"
+                      : "border-gray-200 bg-white",
+                  !dim && !selected && "hover:border-gray-300",
+                  !dim && chip && !selected && "hover:border-brand-300",
                   today && !selected && "border-brand-200 bg-brand-50/50"
                 )}
               >
@@ -353,14 +395,16 @@ export function StepSchedule({
                 >
                   {format(day, "d")}
                 </span>
-                {slot && (
-                  <span className="mt-0.5 block truncate rounded bg-brand-600 px-1 py-px text-[9px] font-medium text-white">
-                    {slot.label}
-                  </span>
-                )}
-                {!slot && selected && (
-                  <span className="mt-0.5 block truncate rounded bg-brand-600 px-1 py-px text-[9px] font-medium text-white">
-                    {data.time || "20:00"}
+                {chip && (
+                  <span
+                    className={cn(
+                      "mt-0.5 block truncate rounded px-1 py-px text-[9px] font-medium",
+                      selected
+                        ? "bg-brand-600 text-white"
+                        : "bg-brand-100 text-brand-700"
+                    )}
+                  >
+                    {chip}
                   </span>
                 )}
               </button>

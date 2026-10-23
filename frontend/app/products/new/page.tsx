@@ -109,7 +109,12 @@ export default function NewProductPage() {
         {step === 2 && (
           <StepSchedule
             data={schedule}
-            onChange={(p) => setSchedule((d) => ({ ...d, ...p }))}
+            onChange={(p) =>
+              setSchedule((d) => ({
+                ...d,
+                ...(typeof p === "function" ? p(d) : p),
+              }))
+            }
           />
         )}
         {step === 3 && <BuildProgress productName={tellUs.name} />}
