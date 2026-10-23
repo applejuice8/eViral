@@ -32,16 +32,31 @@ Health check: `GET http://localhost:8000/health`
 
 ## Migrations
 
+Models live in `app/models.py`.
+
 ```bash
-uv run alembic revision --autogenerate -m "..."   # after adding models
+uv run alembic revision --autogenerate -m "..."   # after changing models
 uv run alembic upgrade head
 ```
+
+## Seed data
+
+```bash
+uv run python -m app.seed          # migrate, then add business "Kek Kak Nora" + owner "Aisha Rahman"
+uv run python -m app.seed --reset  # drop all data first (prototype, data loss is fine)
+```
+
+There is no login: `app.deps.current_user` always returns the seeded owner
+(and creates it if missing).
 
 ## Tests
 
 ```bash
 uv run pytest
 ```
+
+Tests use an in-memory SQLite db; `tests/conftest.py` drops and recreates
+all tables before each test. Tests never call real APIs (see `tests/stubs.py`).
 
 ## YouCam media API
 
