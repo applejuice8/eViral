@@ -16,6 +16,10 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
 FROM base AS build
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# next.config.ts rewrites are evaluated at BUILD time (baked into
+# routes-manifest.json), so the API origin must be set here, not just at run.
+ARG BACKEND_ORIGIN=http://localhost:8000
+ENV BACKEND_ORIGIN=$BACKEND_ORIGIN
 RUN pnpm build
 
 FROM base AS runner
