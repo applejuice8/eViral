@@ -11,16 +11,31 @@ class StubLLMProvider:
 
     model_name = "stub-model"
 
-    def __init__(self, response: dict | None = None, error: Exception | None = None):
+    def __init__(
+        self,
+        response: dict | None = None,
+        error: Exception | None = None,
+        vision_response: dict | None = None,
+    ):
         self.response = response
         self.error = error
+        self.vision_response = vision_response
         self.calls: list[dict[str, Any]] = []
+        self.vision_calls: list[dict[str, Any]] = []
 
     def chat_json(self, system: str, user_payload: dict) -> dict:
         self.calls.append({"system": system, "user_payload": user_payload})
         if self.error is not None:
             raise self.error
         return self.response
+
+    def vision_json(self, system: str, text: str, image_data_url: str, parse):
+        self.vision_calls.append(
+            {"system": system, "text": text, "image_data_url": image_data_url}
+        )
+        if self.error is not None:
+            raise self.error
+        return parse(self.vision_response), "stub-vision-model"
 
 
 # Minimal magic-byte headers so the service's extension sniffing works.
@@ -123,6 +138,15 @@ class StubMediaProvider:
         return self.result_bytes
 
 
+def make_understood_payload() -> dict:
+    return {
+        "product_type": "layered cake",
+        "visible_attributes": ["brown and cream layers", "sliced on a plate"],
+        "suggested_category": "Cakes",
+        "uncertain": ["flavour", "size"],
+    }
+
+
 def make_captions_payload(platforms: list[str]) -> dict:
     return {
         "captions": [
@@ -142,6 +166,7 @@ __all__ = [
     "StubLLMProvider",
     "StubMediaProvider",
     "make_captions_payload",
+    "make_understood_payload",
     "LLMError",
     "PNG_BYTES",
     "JPG_BYTES",

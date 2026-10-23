@@ -9,6 +9,8 @@ from functools import lru_cache
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _DEFAULT_TEXT_MODEL = "nvidia/nemotron-3.5-super-vl:free"
+_DEFAULT_VISION_MODEL = "nvidia/nemotron-3.5-super-vl:free"
+_DEFAULT_VISION_FALLBACKS = "google/gemma-4-31b-it:free,qwen/qwen3.7-flash"
 
 
 class Settings(BaseSettings):
@@ -30,6 +32,10 @@ class Settings(BaseSettings):
     # Free model slugs rotate often on OpenRouter — verify on
     # https://openrouter.ai/models?max_price=0 if this starts failing.
     llm_model_text: str = _DEFAULT_TEXT_MODEL
+    # Photo understanding. If the main model fails or returns bad JSON the
+    # fallbacks (comma separated) are tried in order; the last one is paid.
+    llm_model_vision: str = _DEFAULT_VISION_MODEL
+    llm_model_vision_fallbacks: str = _DEFAULT_VISION_FALLBACKS
 
     # YouCam (Perfect Corp) media API — a proprietary REST task API
     # (Bearer auth, async tasks with polling), NOT OpenAI-compatible,
@@ -54,8 +60,22 @@ class Settings(BaseSettings):
         # a blank value must not override the default.
         if not self.llm_model_text.strip():
             self.llm_model_text = _DEFAULT_TEXT_MODEL
+        if not self.llm_model_vision.strip():
+            self.llm_model_vision = _DEFAULT_VISION_MODEL
+        if not self.llm_model_vision_fallbacks.strip():
+            self.llm_model_vision_fallbacks = _DEFAULT_VISION_FALLBACKS
         if not self.youcam_image_model.strip():
             self.youcam_image_model = "youcam-image-v2"
+
+    @property
+    def vision_models(self) -> list[str]:
+        """Main vision model followed by the fallbacks, without duplicates."""
+        models = [self.llm_model_vision]
+        for name in self.llm_model_vision_fallbacks.split(","):
+            name = name.strip()
+            if name and name not in models:
+                models.append(name)
+        return models
 
 
 @lru_cache

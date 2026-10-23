@@ -6,12 +6,20 @@ of the app never talks to a vendor SDK directly.
 """
 
 import json
+import logging
+from collections.abc import Callable
 from functools import lru_cache
-from typing import Protocol
+from typing import Protocol, TypeVar
 
 from openai import APIError, OpenAI
+from pydantic import ValidationError
 
 from app.config import Settings, get_settings
+
+
+logger = logging.getLogger(__name__)
+
+T = TypeVar("T")
 
 
 class LLMError(Exception):
@@ -32,6 +40,35 @@ class LLMProvider(Protocol):
         """Send a system prompt + JSON user payload, return parsed JSON."""
         ...
 
+    def vision_json(
+        self,
+        system: str,
+        text: str,
+        image_data_url: str,
+        parse: Callable[[dict], T],
+    ) -> tuple[T, str]:
+        """Send a prompt with one image, return (parse(json), model used).
+
+        `parse` validates the JSON; if it raises, the next model is tried.
+        """
+        ...
+
+
+def _load_json(content: str | None) -> dict:
+    """Parse model output, allowing for ```json fences some models add."""
+    text = (content or "").strip()
+    if text.startswith("```"):
+        text = text.strip("`")
+        if text.startswith("json"):
+            text = text[4:]
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise LLMError(f"Model returned non-JSON output: {content!r:.200}") from exc
+    if not isinstance(data, dict):
+        raise LLMError(f"Model returned non-object JSON: {content!r:.200}")
+    return data
+
 
 class OpenRouterProvider:
     """OpenRouter via the OpenAI SDK (OpenAI-compatible endpoint).
@@ -50,6 +87,15 @@ class OpenRouterProvider:
             api_key=settings.openrouter_api_key,
         )
         self._model = settings.llm_model_text
+        self._vision_models = settings.vision_models
+        # No SDK retries for vision: on a rate limit or error we move on to
+        # the next model instead.
+        self._vision_client = OpenAI(
+            base_url=settings.openrouter_base_url,
+            api_key=settings.openrouter_api_key,
+            max_retries=0,
+            timeout=90,
+        )
 
     @property
     def model_name(self) -> str:
@@ -78,6 +124,41 @@ class OpenRouterProvider:
             return json.loads(content)
         except (TypeError, json.JSONDecodeError) as exc:
             raise LLMError(f"Model returned non-JSON output: {content!r}") from exc
+
+    def vision_json(
+        self,
+        system: str,
+        text: str,
+        image_data_url: str,
+        parse: Callable[[dict], T],
+    ) -> tuple[T, str]:
+        errors: list[str] = []
+        for model in self._vision_models:
+            try:
+                response = self._vision_client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": system},
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": text},
+                                {"type": "image_url", "image_url": {"url": image_data_url}},
+                            ],
+                        },
+                    ],
+                    response_format={"type": "json_object"},
+                    temperature=0.2,
+                    max_tokens=1500,
+                )
+                if not response.choices:
+                    raise LLMError("empty response")
+                raw = _load_json(response.choices[0].message.content)
+                return parse(raw), model
+            except (APIError, LLMError, ValidationError, ValueError) as exc:
+                logger.warning("Vision model %s failed: %.300s", model, exc)
+                errors.append(f"{model}: {str(exc)[:200]}")
+        raise LLMError("All vision models failed. " + " | ".join(errors))
 
 
 @lru_cache
