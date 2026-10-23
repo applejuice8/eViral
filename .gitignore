@@ -1,3 +1,15 @@
 .env
+.env.*
 .venv
-.DS_STORE
+.DS_Store
+.workbuddy-ai
+node_modules
+.pnpm-store
+
+# Next.js build output
+.next/
+.next-build/
+.next-final/
+out/
+dist/
+*.tsbuildinfo
