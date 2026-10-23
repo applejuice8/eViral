@@ -64,3 +64,11 @@ body {
 .ev-fade-up {
   animation: ev-fade-up 240ms ease-out both;
 }
+
+/* Brief ring around a post opened from a link like /instagram#post-12 */
+.ev-highlight {
+  outline: 2px solid var(--color-brand-400);
+  outline-offset: 4px;
+  border-radius: 0.75rem;
+  transition: outline-color 600ms ease-out;
+}

@@ -1,47 +1,24 @@
 import * as React from "react";
 import { Badge } from "@/components/ui/badge";
-import type { DraftStatus, ValidatorFlag } from "@/lib/data";
+import type { PostStatus } from "@/lib/api";
+import { statusLabel } from "@/lib/format";
 
-// One visual language everywhere: green = approved/published,
-// amber = pending/warning, red = blocked/failed, blue = informational/scheduled.
-export function StatusBadge({ status }: { status: DraftStatus }) {
-  switch (status) {
-    case "published":
-      return <Badge variant="success">Published</Badge>;
-    case "approved":
-      return <Badge variant="success">Approved</Badge>;
-    case "scheduled":
-      return <Badge variant="info">Scheduled</Badge>;
-    case "pending_approval":
-      return <Badge variant="warning">Needs approval</Badge>;
-    case "blocked":
-      return <Badge variant="danger">Blocked</Badge>;
-    case "failed":
-      return <Badge variant="danger">Failed</Badge>;
-    case "rejected":
-      return <Badge variant="danger">Rejected</Badge>;
-    case "paused":
-      return <Badge variant="muted">Paused</Badge>;
-    case "building":
-      return <Badge variant="info">Building…</Badge>;
-  }
-}
+// One visual language everywhere: green = posted, blue = scheduled,
+// red = failed, grey = still a draft.
+const variant: Record<PostStatus, "success" | "info" | "danger" | "muted"> = {
+  posted: "success",
+  scheduled: "info",
+  failed: "danger",
+  draft: "muted",
+};
 
-export function FlagsBadges({ flags }: { flags: ValidatorFlag[] }) {
-  if (flags.length === 0) {
-    return <Badge variant="success">✓ Facts check passed</Badge>;
-  }
-  return (
-    <>
-      {flags.map((f, i) => (
-        <Badge
-          key={`${f.code}-${i}`}
-          variant={f.severity === "block" ? "danger" : "warning"}
-          title={f.detail}
-        >
-          {f.severity === "block" ? "⛔" : "⚠"} {f.code.replaceAll("_", " ").toLowerCase()}
-        </Badge>
-      ))}
-    </>
-  );
+export const statusDot: Record<PostStatus, string> = {
+  posted: "bg-success-600",
+  scheduled: "bg-info-600",
+  failed: "bg-danger-600",
+  draft: "bg-gray-400",
+};
+
+export function StatusBadge({ status }: { status: PostStatus }) {
+  return <Badge variant={variant[status]}>{statusLabel[status]}</Badge>;
 }
