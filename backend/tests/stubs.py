@@ -1,5 +1,6 @@
 """Stub providers for tests — implement the adapter protocols."""
 
+from collections.abc import Callable
 from typing import Any
 
 from app.adapters.llm import LLMError
@@ -16,12 +17,16 @@ class StubLLMProvider:
         response: dict | None = None,
         error: Exception | None = None,
         vision_response: dict | None = None,
+        text_response: dict | Callable[[dict], dict] | None = None,
     ):
         self.response = response
         self.error = error
         self.vision_response = vision_response
+        # A dict, or a function that builds the reply from the user payload.
+        self.text_response = text_response
         self.calls: list[dict[str, Any]] = []
         self.vision_calls: list[dict[str, Any]] = []
+        self.text_calls: list[dict[str, Any]] = []
 
     def chat_json(self, system: str, user_payload: dict) -> dict:
         self.calls.append({"system": system, "user_payload": user_payload})
@@ -36,6 +41,18 @@ class StubLLMProvider:
         if self.error is not None:
             raise self.error
         return parse(self.vision_response), "stub-vision-model"
+
+    def text_json(self, system: str, user_payload: dict, parse):
+        self.text_calls.append({"system": system, "user_payload": user_payload})
+        if self.error is not None:
+            raise self.error
+        reply = self.text_response
+        if callable(reply):
+            reply = reply(user_payload)
+        try:
+            return parse(reply), "stub-text-model"
+        except ValueError as exc:
+            raise LLMError(f"stub reply did not parse: {exc}") from exc
 
 
 # Minimal magic-byte headers so the service's extension sniffing works.
