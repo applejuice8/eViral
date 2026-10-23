@@ -7,6 +7,12 @@ const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR ?? ".next",
   cacheComponents: true,
   partialPrefetching: true,
+  experimental: {
+    // The photo check (vision model) can take longer than the default 30s
+    // proxy timeout, and uploads may be up to 10 MB plus form overhead.
+    proxyTimeout: 120_000,
+    proxyClientMaxBodySize: 12 * 1024 * 1024,
+  },
   // Proxy API calls through Next so the browser has a single origin and
   // no CORS setup is needed. Point BACKEND_ORIGIN at the API container
   // (docker compose sets http://backend:8000); standalone dev uses :8000.

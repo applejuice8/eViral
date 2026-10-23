@@ -1,7 +1,8 @@
 // Mock data for the eViral demo UI. No backend — everything is synthetic.
 // Single-user scope: the app runs as one Owner (Aisha), no login, no role switcher.
 
-export type Platform = "facebook" | "instagram" | "tiktok";
+import type { Platform } from "@/lib/api";
+export type { Platform };
 
 export type DraftStatus =
   | "building"
