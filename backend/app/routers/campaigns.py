@@ -52,6 +52,7 @@ def post_response(post: Post) -> PostResponse:
         scheduled_at=post.scheduled_at,
         status=post.status,
         posted_at=post.posted_at,
+        published_url=post.published_url,
         why_this_time=post.why_this_time,
     )
 

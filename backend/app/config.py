@@ -62,6 +62,11 @@ class Settings(BaseSettings):
     # so dev runs and tests never spend YouCam credits.
     media_mode: str = "passthrough"
 
+    # Background job that posts due posts every 30 seconds (off in tests).
+    scheduler_enabled: bool = True
+    # POST /internal/tick must send this in X-Tick-Secret. Blank = no check.
+    internal_tick_secret: str = ""
+
     def model_post_init(self, __context) -> None:
         # Docker/compose setups often export blank vars (LLM_MODEL_TEXT=);
         # a blank value must not override the default.

@@ -89,7 +89,14 @@ class PostResponse(BaseModel):
     scheduled_at: UTCDateTime | None
     status: PostStatus
     posted_at: UTCDateTime | None
+    published_url: str | None
     why_this_time: str | None
+
+
+class FeedPostResponse(PostResponse):
+    """A post for the social demo pages."""
+
+    business_name: str
 
 
 class CampaignResponse(BaseModel):

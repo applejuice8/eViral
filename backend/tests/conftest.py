@@ -8,6 +8,7 @@ import os
 import tempfile
 
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+os.environ["SCHEDULER_ENABLED"] = "false"
 # Keep downloaded (stub) media out of the repo during tests.
 _media_tmp = tempfile.mkdtemp(prefix="eviral-test-media-")
 os.environ.setdefault("MEDIA_DIR", _media_tmp)
