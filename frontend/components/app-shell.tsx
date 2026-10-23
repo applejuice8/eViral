@@ -20,6 +20,12 @@ const nav = [
   { href: "/audit", label: "Activity log", icon: ScrollText },
 ];
 
+const socialNav = [
+  { href: "/instagram", label: "Instagram", dotClass: "bg-[#c13584]" },
+  { href: "/facebook", label: "Facebook", dotClass: "bg-[#1877f2]" },
+  { href: "/tiktok", label: "TikTok", dotClass: "bg-[#fe2c55]" },
+];
+
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   return (
@@ -50,6 +56,43 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
+function SocialNavItems({ onNavigate }: { onNavigate?: () => void }) {
+  const pathname = usePathname();
+  return (
+    <div className="mt-4 px-3">
+      <p className="px-3 pb-1.5 text-[11px] font-medium text-gray-400">
+        Socials
+      </p>
+      <nav className="flex flex-col gap-0.5">
+        {socialNav.map((item) => {
+          const active = pathname.startsWith(item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={onNavigate}
+              className={cn(
+                "flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors",
+                active
+                  ? "bg-brand-50 text-brand-700"
+                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+              )}
+            >
+              <span
+                className={cn(
+                  "h-2 w-2 shrink-0 rounded-full",
+                  item.dotClass
+                )}
+              />
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+    </div>
+  );
+}
+
 function SidebarContent() {
   return (
     <div className="flex h-full flex-col">
@@ -64,6 +107,7 @@ function SidebarContent() {
       </div>
 
       <NavItems />
+      <SocialNavItems />
 
       <div className="px-3 pt-4">
         <Link
