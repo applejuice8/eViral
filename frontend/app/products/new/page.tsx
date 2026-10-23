@@ -107,7 +107,17 @@ export default function NewProductPage() {
             onChange={(p) => setSchedule((d) => ({ ...d, ...p }))}
           />
         )}
-        {step === 3 && <BuildProgress productName={tellUs.name} />}
+        {step === 3 && (
+          <BuildProgress
+            facts={{
+              productName: tellUs.name.trim(),
+              price: tellUs.price,
+              note: tellUs.note,
+              platforms: schedule.platforms,
+              language: schedule.language,
+            }}
+          />
+        )}
       </div>
 
       {/* Footer — Back always works: step 0 leaves to the dashboard,
