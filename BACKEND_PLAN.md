@@ -1,5 +1,7 @@
 # eViral — Backend Implementation Plan
 
+> **Status (Oct 2026): built, with a smaller scope than below.** We dropped the fact-checking validator, the approval step and pause/resume to keep the prototype simple. Posts go `draft → scheduled → posted`, and the activity log only records draft / generated / posted events. The launch sequence is 4 stages (teaser, launch, reminder, last chance) with one AI image each. See the root `README.md` for how it works now. The rest of this file is the original plan, kept for reference.
+
 > Derived from `BUSINESS_OVERVIEW.md`, `TECHNICAL_IMPLEMENTATION.md`, `DESIGN_REFERENCES.md`, and the current `frontend/` code.
 > No code written yet — this is the build plan: features, steps, dependencies, and how the workload splits.
 
