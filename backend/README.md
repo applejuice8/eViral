@@ -58,6 +58,21 @@ uv run pytest
 Tests use an in-memory SQLite db; `tests/conftest.py` drops and recreates
 all tables before each test. Tests never call real APIs (see `tests/stubs.py`).
 
+## Products
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /products` | Multipart: `name` (required, ≤80), `price` (optional, ≥0, 2dp), `note` (optional, ≤140), `photo` (jpg/png, ≤10MB). Saves the photo to `MEDIA_DIR`. |
+| `GET /products` | All products, newest first |
+| `GET /products/{id}` | One product |
+| `POST /products/{id}/understand` | Vision model describes the photo. Cached on the product; `?force=true` runs it again. |
+| `PATCH /products/{id}/understood` | `{"attributes": [...]}` saves the owner-confirmed chips |
+
+`photo_url` is a path like `/media/original_ab12.jpg` (the frontend prefixes
+`/backend`). Vision uses `LLM_MODEL_VISION` and falls back to
+`LLM_MODEL_VISION_FALLBACKS` in order if a model errors or returns bad JSON.
+No API key gives 503; provider failures give 502.
+
 ## YouCam media API
 
 Image operations run through the Perfect Corp YouCam task API
