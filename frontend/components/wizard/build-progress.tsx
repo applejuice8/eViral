@@ -10,7 +10,6 @@ import {
   PenLine,
   RotateCw,
   ScanSearch,
-  ShieldCheck,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,7 +23,6 @@ const STEPS: { id: BuildStep; label: string; icon: typeof ScanSearch }[] = [
   { id: "understand", label: "Understanding your photo", icon: ScanSearch },
   { id: "images", label: "Improving images", icon: ImagePlus },
   { id: "captions", label: "Writing captions", icon: PenLine },
-  { id: "checks", label: "Checking facts", icon: ShieldCheck },
 ];
 
 export const POLL_MS = 2000;

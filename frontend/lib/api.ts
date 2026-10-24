@@ -9,7 +9,7 @@ export type PostStatus = "draft" | "scheduled" | "posted" | "failed";
 export type CampaignStatus = "building" | "scheduled" | "done" | "failed";
 export type ScheduleMode = "launch_sequence" | "weekly" | "custom";
 export type StepState = "pending" | "running" | "done" | "failed";
-export type BuildStep = "understand" | "images" | "captions" | "checks";
+export type BuildStep = "understand" | "images" | "captions";
 export type ActivityAction = "draft" | "generated" | "posted";
 
 export interface Understood {

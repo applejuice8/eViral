@@ -69,7 +69,9 @@ class Progress(BaseModel):
     understand: StepProgress
     images: StepProgress
     captions: StepProgress
-    checks: StepProgress
+    # Campaigns built before the "checks" step was removed still carry a
+    # checks entry in their stored progress JSON; pydantic ignores the
+    # extra key, so it simply disappears from API responses.
 
 
 class PostResponse(BaseModel):

@@ -60,7 +60,6 @@ describe("BuildProgress", () => {
             understand: step("done", 0, 3),
             images: step("running", 3),
             captions: step("pending"),
-            checks: step("pending"),
           })
         )
       )
@@ -70,7 +69,6 @@ describe("BuildProgress", () => {
             understand: step("done", 0, 3),
             images: step("done", 3, 10),
             captions: step("running", 10),
-            checks: step("pending"),
           })
         )
       );
@@ -108,13 +106,12 @@ describe("BuildProgress", () => {
             understand: done,
             images: done,
             captions: step("running", 1),
-            checks: step("pending"),
           })
         )
       )
       .mockResolvedValue(
         respond(
-          campaign("scheduled", { understand: done, images: done, captions: done, checks: done })
+          campaign("scheduled", { understand: done, images: done, captions: done })
         )
       ) as unknown as typeof fetch;
 
@@ -137,7 +134,7 @@ describe("BuildProgress", () => {
       respond(
         campaign(
           "failed",
-          { understand: done, images: done, captions: step("failed", 1, 5), checks: step("pending") },
+          { understand: done, images: done, captions: step("failed", 1, 5) },
           "Caption writing failed: provider down"
         )
       )
