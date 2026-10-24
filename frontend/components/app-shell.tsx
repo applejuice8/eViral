@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
+  Megaphone,
   Plus,
   CalendarDays,
   ScrollText,
@@ -41,6 +42,7 @@ function useOwner(): Owner {
 
 const nav = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/campaigns", label: "Campaigns", icon: Megaphone },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
   { href: "/audit", label: "Activity log", icon: ScrollText },
 ];
