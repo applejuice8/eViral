@@ -35,8 +35,7 @@ function elapsed(step: StepProgress, now: number | null): string | null {
   return null;
 }
 
-// Shows the real build progress of a campaign by polling the backend.
-// When the build finishes the owner is taken to the review screen.
+// polls build progress, then moves on to the review screen
 export function BuildProgress({
   campaignId,
   productName,
@@ -81,7 +80,7 @@ export function BuildProgress({
     };
   }, [campaignId, router]);
 
-  // Ticks the timer of the step that is running right now.
+  // tick the running step's timer
   React.useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
@@ -177,8 +176,7 @@ export function BuildProgress({
                   <span className="text-[11px] tabular-nums text-gray-400">{time}</span>
                 )}
               </div>
-              {/* A done step can still carry a note (progress.error) — e.g.
-                  why image editing was skipped. */}
+              {/* done steps can still carry a note */}
               {state === "done" && step?.error && (
                 <p className="ml-[30px] mt-0.5 text-[11px] leading-snug text-gray-500">
                   {step.error}

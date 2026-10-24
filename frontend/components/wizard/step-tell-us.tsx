@@ -12,7 +12,7 @@ export interface TellUsData {
   price: string;
   note: string;
   photo: File | null;
-  /** Object URL for previewing `photo`. */
+  // preview URL for photo
   photoUrl: string | null;
 }
 
@@ -26,15 +26,14 @@ export const MOCK_PRODUCT = {
   photoPath: "/assets/nasi-lemak.jpeg",
 };
 
-/** Returns an error message, or null when the file is fine to upload. */
+// error message or null when the file is fine
 export function checkPhoto(file: File): string | null {
   if (!PHOTO_TYPES.includes(file.type)) return "Please pick a JPG or PNG photo.";
   if (file.size > MAX_PHOTO_BYTES) return "That photo is over 10 MB. Please pick a smaller one.";
   return null;
 }
 
-// Step 1 — photo-first intake: large media panel as hero, prominent name
-// field, price & note clearly optional.
+// step 1: photo-first intake
 export function StepTellUs({
   data,
   onChange,

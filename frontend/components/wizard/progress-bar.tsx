@@ -4,8 +4,7 @@ import * as React from "react";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Zillow-style slim top progress bar: completed = filled, current = ringed,
-// future = muted. Labels sit below the nodes.
+// slim top progress bar
 export function WizardProgress({
   steps,
   current,

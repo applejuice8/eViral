@@ -34,7 +34,7 @@ export interface ScheduleData {
   language: "ms" | "en" | "mixed";
   days: string[];
   time: string;
-  /** Selected publish date(s), ISO "yyyy-MM-dd". Single date for launch/weekly (start date), many for custom. */
+  // publish dates, ISO "yyyy-MM-dd"
   dates: string[];
 }
 
@@ -62,10 +62,10 @@ const MODES = [
   },
 ];
 
-/** Day offsets from the launch start date for each launch-sequence slot. */
+// day offsets from the launch start date
 const LAUNCH_OFFSETS = [0, 2, 5, 7] as const;
 
-/** Weekly cadence covers this many days from the start date (backend default: 2 weeks). */
+// weekly span, matches the backend default
 const WEEKLY_SPAN_DAYS = 14;
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -93,7 +93,7 @@ export function StepSchedule({
   onChange,
 }: {
   data: ScheduleData;
-  /** Accepts a patch object or an updater for batch-safe toggles (rapid clicks never lose state). */
+  // patch object or updater
   onChange: (
     patch: Partial<ScheduleData> | ((prev: ScheduleData) => Partial<ScheduleData>)
   ) => void;
@@ -131,10 +131,7 @@ export function StepSchedule({
     }
   }
 
-  /**
-   * Compute when posts will actually go out, based on mode + selections.
-   * These are preview slots rendered on the calendar grid and in the summary.
-   */
+  // preview slots shown on the calendar and in the summary
   function publishSlots(): PublishSlot[] {
     if (!cursor) return [];
 
@@ -195,12 +192,7 @@ export function StepSchedule({
       : []
   );
 
-  /**
-   * Weekly cadence chips are anchored to WEEKDAYS, not to the start date:
-   * every in-month date matching a chosen weekday within the two weeks from
-   * the start gets a chip. Clicking a date only moves the start boundary, so highlights never
-   * "run away" when clicking around.
-   */
+  // weekly chips: in-month dates matching the picked weekdays
   const recurringSet = new Set<string>();
   if (data.mode === "weekly" && data.dates[0] && data.days.length > 0) {
     const start = data.dates[0];
@@ -275,7 +267,7 @@ export function StepSchedule({
         </div>
       </div>
 
-      {/* Date picker calendar — shown for every mode */}
+      {/* date picker */}
       <div className="rounded-xl border border-gray-200 bg-white p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div>
@@ -355,9 +347,7 @@ export function StepSchedule({
             const iso = format(day, "yyyy-MM-dd");
             const selected = selectedSet.has(iso);
             const today = isToday(day);
-            // Out-of-month cells are display-only: clickable dim cells used to
-            // silently move the start date into another month. Past days can't
-            // be picked either: the backend rejects schedules with no future posts.
+            // out-of-month cells are display-only, past days can't be picked
             const dim = !isSameMonth(day, cursor) || isBefore(day, startOfToday());
 
             let chip: string | null = null;
@@ -418,7 +408,7 @@ export function StepSchedule({
           })}
         </div>
 
-        {/* Publish summary — what the calendar above means */}
+        {/* publish summary */}
         {slots.length > 0 && (
           <div className="mt-3 border-t border-gray-100 pt-3">
             <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-gray-400">

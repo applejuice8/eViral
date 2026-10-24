@@ -4,8 +4,7 @@ import { PackagePlus, Tags } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CampaignType } from "@/lib/api";
 
-// Step 0 — choose what kind of campaign this is. New product keeps the
-// photo-first flow; promotion reuses something the business already sells.
+// step 0: new product or promotion
 export function StepType({
   value,
   onChange,
