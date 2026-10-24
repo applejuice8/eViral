@@ -20,10 +20,10 @@ const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 const PHOTO_TYPES = ["image/jpeg", "image/png"];
 
 export const MOCK_PRODUCT = {
-  name: "Kek Lapis Sarawak Premium",
-  price: "65",
-  note: "Limited batch — ready 1 Dec",
-  photoPath: "/assets/kek-lapis-sample.jpg",
+  name: "Nasi Lemak Ayam Goreng",
+  price: "15",
+  note: "Crispy ayam goreng, fragrant sambal & coconut rice — packed fresh daily.",
+  photoPath: "/assets/nasi-lemak.jpeg",
 };
 
 /** Returns an error message, or null when the file is fine to upload. */
@@ -69,7 +69,7 @@ export function StepTellUs({
       const res = await fetch(MOCK_PRODUCT.photoPath);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const blob = await res.blob();
-      const file = new File([blob], "kek-lapis-sample.jpg", { type: "image/jpeg" });
+      const file = new File([blob], "nasi-lemak.jpeg", { type: "image/jpeg" });
       if (data.photoUrl) URL.revokeObjectURL(data.photoUrl);
       onChange({
         name: MOCK_PRODUCT.name,

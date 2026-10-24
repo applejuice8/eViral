@@ -88,10 +88,10 @@ describe("StepTellUs", () => {
       fireEvent.click(screen.getByRole("button", { name: /load mock data/i }));
     });
 
-    expect(fetchMock).toHaveBeenCalledWith("/assets/kek-lapis-sample.jpg");
+    expect(fetchMock).toHaveBeenCalledWith("/assets/nasi-lemak.jpeg");
     const patch = onChange.mock.calls[0][0] as Partial<TellUsData>;
-    expect(patch.name).toBe("Kek Lapis Sarawak Premium");
-    expect(patch.price).toBe("65");
+    expect(patch.name).toBe("Nasi Lemak Ayam Goreng");
+    expect(patch.price).toBe("15");
     expect(patch.note).toBe(MOCK_PRODUCT.note);
     expect(patch.photo).toBeInstanceOf(File);
     expect(patch.photo?.type).toBe("image/jpeg");
