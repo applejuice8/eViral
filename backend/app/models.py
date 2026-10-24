@@ -32,6 +32,8 @@ PLATFORMS = ("facebook", "instagram", "tiktok")
 LANGUAGES = ("ms", "en", "mixed")
 SCHEDULE_MODES = ("launch_sequence", "weekly", "custom")
 CAMPAIGN_STATUSES = ("building", "scheduled", "done", "failed")
+CAMPAIGN_TYPES = ("new_product", "promotion")
+PROMO_KINDS = ("promote", "discount")
 PROGRESS_STEPS = ("understand", "images", "captions")
 STEP_STATES = ("pending", "running", "done", "failed")
 POST_STATUSES = ("draft", "scheduled", "posted", "failed")
@@ -127,6 +129,18 @@ class Campaign(Base):
     # {"mode": SCHEDULE_MODES, "days": [...], "time": "HH:MM", "start_date": "YYYY-MM-DD"}
     schedule: Mapped[dict] = mapped_column(JSON)
     status: Mapped[str] = mapped_column(String(20), default="building")
+    # new_product = the wizard's photo-first flow; promotion = reuse an
+    # existing product (promote at normal price, or discount it).
+    campaign_type: Mapped[str] = mapped_column(String(20), default="new_product")
+    # Only set for promotions: "promote" or "discount".
+    promo_kind: Mapped[str | None] = mapped_column(String(20))
+    # What the user typed (percent off, or the discounted price); the other
+    # side is derived for display. Null unless promo_kind == "discount".
+    discount_percent: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    promo_price_myr: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    # Occasion for a promotion ("Raya sale", "weekend only") so captions can
+    # mention it; the product's own note stays untouched.
+    promo_note: Mapped[str | None] = mapped_column(String(140))
     # {step: {"state", "started_at", "finished_at", "error"}} for PROGRESS_STEPS
     progress: Mapped[dict] = mapped_column(JSON, default=empty_progress)
     error: Mapped[str | None] = mapped_column(Text)

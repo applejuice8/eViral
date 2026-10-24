@@ -50,6 +50,18 @@ STAGE_SCENES = {
     "reminder": "lifestyle shot on a home dining table with plates and a cup of tea, natural daylight",
     "last_chance": "warm festive scene with soft fairy lights and wrapped gift boxes around it",
 }
+# Extra art direction for promotion campaigns: the same product, but the
+# scene should feel like a promo. The negative prompt already bans text,
+# so tags stay blank — the owner can write the price on them if they want.
+PROMO_SCENE_PROMOTE = (
+    " Give it a festive promotional feel with colourful celebratory props "
+    "around it, like ribbons and confetti, without any text, signs or logos."
+)
+PROMO_SCENE_DISCOUNT = (
+    " Give it a sale-day promotional feel with colourful celebratory props "
+    "around it and a small blank paper price tag tied to it with string, "
+    "without any text, signs or logos."
+)
 STAGE_NEGATIVE_PROMPT = DEFAULT_NEGATIVE_PROMPT + ", text, letters, logo, different product"
 STAGE_IMAGE_SIZE = "1024*1024"
 
@@ -80,6 +92,11 @@ def create_campaign(
         language=body.language,
         platforms=list(body.platforms),
         schedule=describe_schedule(body.schedule, now),
+        campaign_type=body.campaign_type,
+        promo_kind=body.promo_kind,
+        discount_percent=body.discount_percent,
+        promo_price_myr=body.promo_price_myr,
+        promo_note=(body.promo_note or "").strip() or None,
         status="building",
         progress=empty_progress(),
     )
@@ -103,7 +120,11 @@ def create_campaign(
         action="draft",
         entity_type="campaign",
         entity_id=campaign.id,
-        summary=f"Campaign started for {product.name}",
+        summary=(
+            f"Promotion started for {product.name}"
+            if body.campaign_type == "promotion"
+            else f"Campaign started for {product.name}"
+        ),
         actor=user.name,
         business_id=user.business_id,
         detail={"posts": len(planned), "mode": body.schedule.mode},
@@ -299,6 +320,14 @@ def _make_stage_images(
     """
     understood = campaign.product.understood or {}
     thing = understood.get("product_type") or campaign.product.name
+    if campaign.campaign_type == "promotion":
+        promo_scene = (
+            PROMO_SCENE_DISCOUNT
+            if campaign.promo_kind == "discount"
+            else PROMO_SCENE_PROMOTE
+        )
+    else:
+        promo_scene = ""
     try:
         logger.info("YouCam: upload enhanced photo (campaign %s)", campaign.id)
         file_id = media.upload_image(
@@ -312,7 +341,7 @@ def _make_stage_images(
     for stage in stages:
         prompt = (
             f"The same {thing} from the photo, with its shape, colours and details "
-            f"unchanged, in a {STAGE_SCENES[stage]}. Realistic food photo."
+            f"unchanged, in a {STAGE_SCENES[stage]}.{promo_scene} Realistic food photo."
         )
         try:
             logger.info("YouCam: image-to-image %s (campaign %s)", stage, campaign.id)
@@ -363,6 +392,11 @@ def _write_captions(db: Session, campaign: Campaign, llm: LLMProvider) -> None:
         seen_in_photo=list(product.confirmed_attributes or []),
         language=campaign.language,
         slots=slots,
+        campaign_type=campaign.campaign_type,
+        promo_kind=campaign.promo_kind,
+        discount_percent=campaign.discount_percent,
+        promo_price_myr=campaign.promo_price_myr,
+        promo_note=campaign.promo_note,
     )
     captions, model = write_campaign_captions(payload, llm)
     for slot, post in zip(slots, posts):
@@ -400,11 +434,45 @@ def clean_hashtags(tags: list[str], limit: int) -> list[str]:
     return out[:limit]
 
 
+def _price_token(amount: str) -> re.Pattern:
+    """Regex for an exact RM amount: RM15 / RM 15 / RM15.00, not RM150.
+
+    The lookahead blocks thousands groupings too ("RM65,000" is not RM65).
+    """
+    return re.compile(rf"\bRM\s?{re.escape(amount)}(?!\d|,\d)", re.IGNORECASE)
+
+
+def _apply_promo_price(text: str, price: Decimal, promo_price: Decimal) -> str:
+    """Keep the price honest when the product is discounted.
+
+    The caption must show the deal ("was RM15, now RM12"). If the model
+    already wrote both prices, leave it alone; if it wrote only one of
+    them, turn the first occurrence into the deal; if it wrote neither,
+    append the deal. Stray other prices are left untouched — rewriting
+    them could lie about the offer.
+    """
+    if not text:
+        return text
+    was_amt, now_amt = price_text(price), price_text(promo_price)
+    was_re, now_re = _price_token(was_amt), _price_token(now_amt)
+    deal = f"was RM{was_amt}, now RM{now_amt}"
+    has_was = was_re.search(text) is not None
+    has_now = now_re.search(text) is not None
+    if has_was and has_now:
+        return text
+    if has_was:
+        return was_re.sub(deal, text, count=1)
+    if has_now:
+        return now_re.sub(deal, text, count=1)
+    return f"{text} {deal[0].upper() + deal[1:]}."
+
+
 def tidy_post(
     caption: str,
     hashtags: list[str],
     platform: str,
     price: Decimal | None,
+    promo_price: Decimal | None = None,
 ) -> tuple[str, list[str]]:
     """Move stray hashtags out of the text and keep the price honest."""
     text = caption.strip()
@@ -417,6 +485,8 @@ def tidy_post(
         text = _PRICE_WITH_BRACKETS_RE.sub("", text)
         text = re.sub(r"[ \t]{2,}", " ", text)
         text = re.sub(r" +([.,!?])", r"\1", text).strip()
+    elif promo_price is not None:
+        text = _apply_promo_price(text, price, promo_price)
     else:
         text = _PRICE_RE.sub(f"RM{price_text(price)}", text)
 
@@ -425,12 +495,21 @@ def tidy_post(
 
 def _check_posts(campaign: Campaign) -> None:
     product = campaign.product
+    promo_price = (
+        campaign.promo_price_myr if campaign.promo_kind == "discount" else None
+    )
     for post in campaign.posts:
         caption, hashtags = tidy_post(
-            post.caption or "", post.hashtags or [], post.platform, product.price_myr
+            post.caption or "", post.hashtags or [], post.platform, product.price_myr,
+            promo_price,
         )
         if not caption:
             caption = product.name if not product.note else f"{product.name}. {product.note}"
+            if promo_price is not None and product.price_myr is not None:
+                caption += (
+                    f" Was RM{price_text(product.price_myr)}, "
+                    f"now RM{price_text(promo_price)}."
+                )
         post.caption = caption
         post.hashtags = hashtags
         if post.platform == "tiktok" and not post.video_idea:

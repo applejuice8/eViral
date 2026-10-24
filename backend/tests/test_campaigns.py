@@ -89,6 +89,21 @@ def start_campaign(api, product_id, **schedule):
     )
 
 
+def start_promo(api, product_id, **promo):
+    """Start a promotion campaign; kwargs go straight into the JSON body."""
+    return api.post(
+        "/campaigns",
+        json={
+            "product_id": product_id,
+            "language": "mixed",
+            "platforms": ALL,
+            "schedule": {"mode": "launch_sequence", "dates": ["2030-11-01"], "time": "20:00"},
+            "campaign_type": "promotion",
+            **promo,
+        },
+    )
+
+
 class TestPlanner:
     def test_launch_sequence_days_and_utc(self):
         schedule = ScheduleIn(mode="launch_sequence", start_date=date(2026, 11, 1), time="20:00")
@@ -177,6 +192,50 @@ class TestTidyPost:
         assert len(out) == 10
         _, out = tidy_post("Hi", ["#a", "#A", "b c"], "facebook", None)
         assert out == ["#a", "#bc"]
+
+
+class TestTidyPostPromo:
+    """tidy_post with a discounted campaign price (issue 31)."""
+
+    def test_replaces_original_price_with_the_deal(self):
+        caption, _ = tidy_post(
+            "Only RM65 this week!", [], "facebook", Decimal("65"), Decimal("12")
+        )
+        assert caption == "Only was RM65, now RM12 this week!"
+
+    def test_wrong_price_gets_the_real_deal_appended(self):
+        # The model invented RM60; with a discount the caption must show the
+        # real deal, so it is appended rather than rewriting "now RM60".
+        caption, _ = tidy_post("Now RM60 only", [], "facebook", Decimal("65"), Decimal("12"))
+        assert caption == "Now RM60 only Was RM65, now RM12."
+
+    def test_keeps_caption_that_already_shows_both_prices(self):
+        caption, _ = tidy_post(
+            "Was RM65, now RM12 — Raya special!", [], "facebook", Decimal("65"), Decimal("12")
+        )
+        assert caption == "Was RM65, now RM12 — Raya special!"
+
+    def test_promo_price_alone_becomes_the_deal(self):
+        caption, _ = tidy_post("Get it for RM12 today", [], "facebook", Decimal("65"), Decimal("12"))
+        assert caption == "Get it for was RM65, now RM12 today"
+
+    def test_appends_deal_when_no_price_mentioned(self):
+        caption, _ = tidy_post("Sedap!", [], "facebook", Decimal("65"), Decimal("12"))
+        assert caption == "Sedap! Was RM65, now RM12."
+
+    def test_decimal_prices(self):
+        caption, _ = tidy_post(
+            "Only RM15.90", [], "facebook", Decimal("15.90"), Decimal("12.50")
+        )
+        assert caption == "Only was RM15.90, now RM12.50"
+
+    def test_no_price_on_product_strips_everything(self):
+        caption, _ = tidy_post("Now RM60 only", [], "facebook", None, Decimal("12"))
+        assert caption == "Now only"
+
+    def test_rm150_is_not_the_price_65(self):
+        caption, _ = tidy_post("Bundle of 10 for RM650", [], "facebook", Decimal("65"), Decimal("12"))
+        assert caption == "Bundle of 10 for RM650 Was RM65, now RM12."
 
 
 class TestBuild:
@@ -403,6 +462,182 @@ class TestPostsAndCalendar:
         assert posts[0]["image_url"].startswith("/media/")
         assert api.get("/calendar", params={"from": "2030-11-09"}).json() == []
         assert api.get("/calendar", params={"from": "2030-11-09", "to": "2030-11-01"}).status_code == 422
+
+
+class TestPromotions:
+    """Campaign types: promotion (promote / discount) — issue 31."""
+
+    def test_promote_happy_path(self, api, llm):
+        product_id = add_product(api)
+        res = start_promo(api, product_id, promo_kind="promote")
+        assert res.status_code == 202
+        body = res.json()
+        assert body["campaign_type"] == "promotion"
+        assert body["promo_kind"] == "promote"
+        assert body["discount_percent"] is None
+        assert body["promo_price_myr"] is None
+
+        built = api.get(f"/campaigns/{body['id']}").json()
+        assert built["status"] == "scheduled"
+        # The product already exists and was understood — no extra vision call.
+        assert len(llm.vision_calls) == 1
+        payload = llm.text_calls[0]["user_payload"]
+        assert payload["facts"]["promo"] == {"kind": "promote", "occasion": None}
+        # Normal-price captions: the real price, no invented deal.
+        for post in built["posts"]:
+            assert "RM65" in post["caption"]
+            assert "RM12" not in post["caption"]
+
+        summary = next(r for r in api.get("/campaigns").json() if r["id"] == body["id"])
+        assert summary["campaign_type"] == "promotion"
+        assert summary["promo_kind"] == "promote"
+
+    def test_discount_from_percent(self, api, llm):
+        product_id = add_product(api)
+        res = start_promo(
+            api, product_id, promo_kind="discount", discount_percent="20",
+            promo_note="Raya sale",
+        )
+        assert res.status_code == 202
+        body = res.json()
+        assert body["discount_percent"] == "20.00"
+        assert body["promo_price_myr"] == "52.00"
+        assert body["promo_note"] == "Raya sale"
+
+        built = api.get(f"/campaigns/{body['id']}").json()
+        assert built["status"] == "scheduled"
+        promo = llm.text_calls[0]["user_payload"]["facts"]["promo"]
+        assert promo == {
+            "kind": "discount",
+            "was_price_myr": "65",
+            "now_price_myr": "52",
+            "percent_off": 20.0,
+            "occasion": "Raya sale",
+        }
+        for post in built["posts"]:
+            assert "was RM65, now RM52" in post["caption"]
+
+    def test_discount_from_price(self, api):
+        product_id = add_product(api)
+        res = start_promo(api, product_id, promo_kind="discount", promo_price_myr="12")
+        assert res.status_code == 202
+        body = res.json()
+        assert body["promo_price_myr"] == "12.00"
+        assert body["discount_percent"] == "81.54"
+
+    def test_both_sides_consistent_ok(self, api):
+        product_id = add_product(api)
+        res = start_promo(
+            api, product_id, promo_kind="discount",
+            discount_percent="20", promo_price_myr="52",
+        )
+        assert res.status_code == 202
+
+    def test_both_sides_conflict_422(self, api):
+        product_id = add_product(api)
+        res = start_promo(
+            api, product_id, promo_kind="discount",
+            discount_percent="50", promo_price_myr="12",
+        )
+        assert res.status_code == 422
+        assert "RM32.50" in res.json()["detail"]
+
+    def test_discount_needs_a_price(self, api):
+        product_id = add_product(api, price="")
+        res = start_promo(api, product_id, promo_kind="discount", discount_percent="20")
+        assert res.status_code == 422
+        assert "no price" in res.json()["detail"]
+
+    def test_promo_price_must_be_lower(self, api):
+        product_id = add_product(api)
+        res = start_promo(api, product_id, promo_kind="discount", promo_price_myr="70")
+        assert res.status_code == 422
+        assert "lower" in res.json()["detail"]
+
+    def test_percent_must_be_1_to_99(self, api):
+        product_id = add_product(api)
+        for pct in ("0", "100", "150"):
+            res = start_promo(api, product_id, promo_kind="discount", discount_percent=pct)
+            assert res.status_code == 422
+
+    def test_promote_cannot_have_discount(self, api):
+        product_id = add_product(api)
+        res = start_promo(api, product_id, promo_kind="promote", discount_percent="20")
+        assert res.status_code == 422
+
+    def test_discount_needs_percent_or_price(self, api):
+        product_id = add_product(api)
+        res = start_promo(api, product_id, promo_kind="discount")
+        assert res.status_code == 422
+
+    def test_promotion_needs_promo_kind(self, api):
+        product_id = add_product(api)
+        res = start_promo(api, product_id)
+        assert res.status_code == 422
+
+    def test_new_product_ignores_promo_fields(self, api):
+        product_id = add_product(api)
+        res = api.post(
+            "/campaigns",
+            json={
+                "product_id": product_id,
+                "language": "mixed",
+                "platforms": ALL,
+                "schedule": {"mode": "launch_sequence", "dates": ["2030-11-01"]},
+                "campaign_type": "new_product",
+                "promo_kind": "discount",
+                "discount_percent": "20",
+                "promo_price_myr": "12",
+            },
+        )
+        assert res.status_code == 202
+        body = res.json()
+        assert body["campaign_type"] == "new_product"
+        assert body["promo_kind"] is None
+        assert body["discount_percent"] is None
+        assert body["promo_price_myr"] is None
+
+    def test_old_clients_default_to_new_product(self, api):
+        product_id = add_product(api)
+        res = start_campaign(api, product_id)
+        assert res.status_code == 202
+        assert res.json()["campaign_type"] == "new_product"
+        assert res.json()["promo_kind"] is None
+
+
+class TestPromoImages:
+    """Promotion campaigns get promo-flavoured stage image prompts."""
+
+    @pytest.fixture()
+    def media(self) -> StubMediaProvider:
+        return StubMediaProvider()
+
+    @staticmethod
+    def poster_prompts(media: StubMediaProvider) -> list[str]:
+        return [s["prompt"] for s in media.submissions if s["kind"] == "poster-image"]
+
+    def test_promotion_posters_get_promo_context(self, api, media):
+        product_id = add_product(api)
+        start_promo(api, product_id, promo_kind="discount", discount_percent="20")
+        prompts = self.poster_prompts(media)
+        assert prompts
+        assert all("promotional" in p for p in prompts)
+        assert all("price tag" in p for p in prompts)
+
+    def test_promote_only_posters_get_festive_context(self, api, media):
+        product_id = add_product(api)
+        start_promo(api, product_id, promo_kind="promote")
+        prompts = self.poster_prompts(media)
+        assert prompts
+        assert all("promotional" in p for p in prompts)
+        assert all("price tag" not in p for p in prompts)
+
+    def test_new_product_posters_stay_plain(self, api, media):
+        product_id = add_product(api)
+        start_campaign(api, product_id)
+        prompts = self.poster_prompts(media)
+        assert prompts
+        assert all("promotional" not in p for p in prompts)
 
 
 class TestImageChoice:

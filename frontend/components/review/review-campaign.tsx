@@ -150,6 +150,11 @@ export function ReviewCampaign() {
   const { campaign } = state;
   const { product, posts } = campaign;
   const price = formatPrice(product.price_myr);
+  const promoPrice = formatPrice(campaign.promo_price_myr);
+  const percent =
+    campaign.discount_percent == null ? null : Number(campaign.discount_percent);
+  const percentLabel =
+    percent != null && Number.isFinite(percent) ? ` (${percent}% off)` : "";
   const original = mediaUrl(product.photo_url) ?? "";
   const groups = groupPosts(posts);
   const aiPost = groups
@@ -170,13 +175,27 @@ export function ReviewCampaign() {
           <h1 className="text-xl font-bold text-gray-900">{product.name}</h1>
           <Badge variant="default">{scheduleModeLabel[campaign.schedule.mode]}</Badge>
           <Badge variant="muted">{languageLabel[campaign.language]}</Badge>
+          {campaign.promo_kind === "discount" && (
+            <Badge variant="warning" data-testid="promo-badge">
+              {percent != null && Number.isFinite(percent) ? `${percent}% off` : "Promo"}
+            </Badge>
+          )}
+          {campaign.promo_kind === "promote" && (
+            <Badge variant="info" data-testid="promo-badge">
+              Promotion
+            </Badge>
+          )}
         </div>
         <p className="mt-1 text-[13px] text-gray-500">
           {posts.length} post{posts.length === 1 ? "" : "s"}
           {times.length > 0 &&
             ` · ${formatDay(times[0])} – ${formatDay(times[times.length - 1])}`}
-          {price ? ` · ${price}` : " · No price"}
-          {product.note ? ` · ${product.note}` : ""}
+          {campaign.promo_kind === "discount" && promoPrice
+            ? ` · was ${price ?? "—"}, now ${promoPrice}${percentLabel}`
+            : price
+              ? ` · ${price}`
+              : " · No price"}
+          {campaign.promo_note ? ` · ${campaign.promo_note}` : product.note ? ` · ${product.note}` : ""}
         </p>
       </div>
 

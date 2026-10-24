@@ -11,6 +11,8 @@ export type ScheduleMode = "launch_sequence" | "weekly" | "custom";
 export type StepState = "pending" | "running" | "done" | "failed";
 export type BuildStep = "understand" | "images" | "captions";
 export type ActivityAction = "draft" | "generated" | "posted";
+export type CampaignType = "new_product" | "promotion";
+export type PromoKind = "promote" | "discount";
 
 export interface Understood {
   product_type: string;
@@ -80,6 +82,11 @@ export interface Campaign {
   error: string | null;
   created_at: string;
   updated_at: string;
+  campaign_type: CampaignType;
+  promo_kind: PromoKind | null;
+  discount_percent: string | null;
+  promo_price_myr: string | null;
+  promo_note: string | null;
   product: Product;
   posts: Post[];
 }
@@ -94,6 +101,11 @@ export interface CampaignSummary {
   language: Language;
   platforms: Platform[];
   schedule_mode: ScheduleMode;
+  campaign_type: CampaignType;
+  promo_kind: PromoKind | null;
+  discount_percent: string | null;
+  promo_price_myr: string | null;
+  promo_note: string | null;
   posts_total: number;
   posts_scheduled: number;
   posts_posted: number;
@@ -139,6 +151,12 @@ export interface NewCampaign {
   language: Language;
   platforms: Platform[];
   schedule: ScheduleInput;
+  campaign_type?: CampaignType;
+  /** Only for promotions; null/omitted for new-product campaigns. */
+  promo_kind?: PromoKind | null;
+  discount_percent?: string | null;
+  promo_price_myr?: string | null;
+  promo_note?: string | null;
 }
 
 export interface PostPatch {
@@ -220,6 +238,9 @@ export const api = {
   },
   getProduct(id: number) {
     return request<Product>(`/products/${id}`);
+  },
+  listProducts() {
+    return request<Product[]>("/products");
   },
   understandProduct(id: number, force = false) {
     return request<Product>(

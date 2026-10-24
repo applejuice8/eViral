@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PlatformIcon } from "@/components/platform-icon";
 import { api, ApiError, mediaUrl, type CampaignStatus, type CampaignSummary } from "@/lib/api";
-import { formatDay, scheduleModeLabel } from "@/lib/format";
+import { formatDay, formatPrice, scheduleModeLabel } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 // Campaign statuses in the words the owner uses: a campaign that is still
@@ -182,6 +182,11 @@ function CampaignCard({ campaign }: { campaign: CampaignSummary }) {
         <p className="text-[11px] text-gray-500">
           {campaign.posts_total} post{campaign.posts_total === 1 ? "" : "s"} ·{" "}
           {scheduleModeLabel[campaign.schedule_mode].toLowerCase()}
+          {campaign.promo_kind === "discount" && campaign.promo_price_myr
+            ? ` · ${formatPrice(campaign.promo_price_myr)} promo`
+            : campaign.promo_kind === "promote"
+              ? " · Promotion"
+              : ""}
           {campaign.first_post_at && campaign.last_post_at
             ? ` · ${formatDay(campaign.first_post_at)} – ${formatDay(campaign.last_post_at)}`
             : ""}
