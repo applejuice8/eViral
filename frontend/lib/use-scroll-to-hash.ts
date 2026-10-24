@@ -2,8 +2,7 @@
 
 import * as React from "react";
 
-// Content here loads after the page, so the browser's own jump to
-// "#post-12" happens too early. Scroll once the content is ready.
+// content loads after the page, so scroll manually once ready
 export function useScrollToHash(ready: boolean) {
   React.useEffect(() => {
     if (!ready || !window.location.hash) return;

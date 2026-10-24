@@ -1,6 +1,4 @@
-// Typed client for the eViral backend. The browser talks to it through the
-// Next rewrite at /backend/*, so there is no CORS setup. All datetimes from
-// the API are UTC ISO strings ("...Z"); see lib/format.ts for display.
+// typed API client; requests go through /backend/*, datetimes are UTC ISO
 
 export type Platform = "facebook" | "instagram" | "tiktok";
 export type Language = "ms" | "en" | "mixed";
@@ -66,7 +64,7 @@ export interface StepProgress {
 
 export interface ScheduleInput {
   mode: ScheduleMode;
-  /** Start date for launch_sequence/weekly, every picked date for custom. */
+  // start date, or every picked date for custom
   dates: string[];
   time: string;
   days: string[];
@@ -152,7 +150,7 @@ export interface NewCampaign {
   platforms: Platform[];
   schedule: ScheduleInput;
   campaign_type?: CampaignType;
-  /** Only for promotions; null/omitted for new-product campaigns. */
+  // promotions only
   promo_kind?: PromoKind | null;
   discount_percent?: string | null;
   promo_price_myr?: string | null;
@@ -177,12 +175,12 @@ export class ApiError extends Error {
 
 const BASE = "/backend";
 
-/** Turn an API media path ("/media/x.jpg") into a URL the browser can load. */
+// "/media/x.jpg" -> browser-loadable URL
 export function mediaUrl(path: string | null | undefined): string | null {
   return path ? `${BASE}${path}` : null;
 }
 
-// FastAPI errors look like {"detail": "text"} or {"detail": [{msg: ...}]}.
+// FastAPI errors: {"detail": "..."} or a list
 async function errorMessage(res: Response): Promise<string> {
   try {
     const body = (await res.json()) as { detail?: unknown };

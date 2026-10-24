@@ -4,10 +4,7 @@ import * as React from "react";
 import { api, type FeedPost, type Platform } from "@/lib/api";
 import { useScrollToHash } from "@/lib/use-scroll-to-hash";
 
-/**
- * Real posts the mock publisher has posted to this platform, newest first.
- * Empty while loading or if the backend is down, so the fake feed still shows.
- */
+// posted posts for this platform, newest first
 export function usePostedPosts(platform: Platform) {
   const [attempt, setAttempt] = React.useState(0);
   const [state, setState] = React.useState<{
