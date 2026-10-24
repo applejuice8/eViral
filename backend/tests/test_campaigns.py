@@ -313,6 +313,29 @@ class TestLiveMedia:
         assert all(p["uses_original_image"] for p in body["posts"])
         assert all(p["image_url"] == body["product"]["photo_url"] for p in body["posts"])
 
+    def test_image_choice_switch_between_original_and_ai(self, api, media, db):
+        product_id = add_product(api)
+        cid = start_campaign(api, product_id).json()["id"]
+
+        # Built with AI images; switching to the original re-points every post.
+        res = api.post(f"/campaigns/{cid}/image-choice", json={"use_original_image": True})
+        assert res.status_code == 200
+        body = res.json()
+        assert all(p["uses_original_image"] for p in body["posts"])
+        assert all(p["image_url"] == body["product"]["photo_url"] for p in body["posts"])
+
+        # Back to the AI images: each stage gets its own image again.
+        res = api.post(f"/campaigns/{cid}/image-choice", json={"use_original_image": False})
+        assert res.status_code == 200
+        body = res.json()
+        stage_assets = {
+            a.stage: a
+            for a in db.scalars(select(MediaAsset).where(MediaAsset.kind == "stage"))
+        }
+        for p in body["posts"]:
+            assert p["uses_original_image"] is False
+            assert p["image_url"] == stage_assets[p["stage"]].url
+
 
 class TestPostsAndCalendar:
     def test_patch_post(self, api, db):
@@ -348,3 +371,23 @@ class TestPostsAndCalendar:
         assert posts[0]["image_url"].startswith("/media/")
         assert api.get("/calendar", params={"from": "2030-11-09"}).json() == []
         assert api.get("/calendar", params={"from": "2030-11-09", "to": "2030-11-01"}).status_code == 422
+
+
+class TestImageChoice:
+    """POST /campaigns/{id}/image-choice — original photo vs AI image."""
+
+    def test_ai_choice_without_ai_image_conflicts(self, api, db):
+        # media fixture defaults to None, so the build never made an AI image.
+        product_id = add_product(api)
+        cid = start_campaign(api, product_id).json()["id"]
+
+        res = api.post(f"/campaigns/{cid}/image-choice", json={"use_original_image": False})
+        assert res.status_code == 409
+
+        res = api.post(f"/campaigns/{cid}/image-choice", json={"use_original_image": True})
+        assert res.status_code == 200
+        assert all(p["uses_original_image"] for p in res.json()["posts"])
+
+    def test_unknown_campaign_404(self, api):
+        res = api.post("/campaigns/999/image-choice", json={"use_original_image": True})
+        assert res.status_code == 404

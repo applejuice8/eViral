@@ -239,6 +239,12 @@ export const api = {
   getCampaign(id: number) {
     return request<Campaign>(`/campaigns/${id}`);
   },
+  setImageChoice(campaignId: number, useOriginalImage: boolean) {
+    return request<Campaign>(
+      `/campaigns/${campaignId}/image-choice`,
+      json("POST", { use_original_image: useOriginalImage })
+    );
+  },
   listCampaigns() {
     return request<CampaignSummary[]>("/campaigns");
   },
