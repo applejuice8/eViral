@@ -9,6 +9,7 @@ import {
   Plus,
   CalendarDays,
   ScrollText,
+  TrendingUp,
   Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -44,6 +45,7 @@ const nav = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/campaigns", label: "Campaigns", icon: Megaphone },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
+  { href: "/impact", label: "Impact", icon: TrendingUp },
   { href: "/audit", label: "Activity log", icon: ScrollText },
 ];
 
