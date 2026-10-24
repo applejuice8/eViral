@@ -158,11 +158,11 @@ The tests use provider stubs and do not call OpenRouter or YouCam.
 
 ## How We Use Replit
 
-- **Development:** Collaborative coding in a shared Repl using Multiplayer.
+- **Development:** Collaborative coding in a shared Repl using Multiplayer, along with initial ideation and wireframe. 
 - **Hosting:** The app is deployed with Replit Deployments at the [Live Demo link](https://e-viral.replit.app/) above.
 - **Secrets:** API keys are stored in Replit Secrets, never in the code.
 
-Proof of Use: 
+Proof of Use: [Replit Proof of Use](submission/SDC2026_Asia%20Pacific%20Square%20Mall_Replit_POU.pdf)
 
 ## How We Use RunPod
 
@@ -200,11 +200,11 @@ RunPod is not used for this project.
 - [x] Team name, domain (Domain 1 / Domain 2) and SDG track filled in
 - [x] Slide deck link added
 - [ ] Demo video link added
-- [ ] Replit used, with proof of use in `submission/`
+- [x] Replit used, with proof of use in `submission/`
 - [x] RunPod used, with proof of use in `submission/` (Not Used -> No AI Training Performed)
-- [ ] Preliminary submission completed (`SDC2026_TeamName_Preliminary.pdf`)
-- [ ] Technology declaration completed (`SDC2026_TeamName_TechDeclaration.pdf`)
-- [ ] Submission files renamed with your team name (replace `TeamName`)
+- [x] Preliminary submission completed (`SDC2026_TeamName_Preliminary.pdf`)
+- [x] Technology declaration completed (`SDC2026_TeamName_TechDeclaration.pdf`)
+- [x] Submission files renamed with your team name (replace `TeamName`)
 - [x] "How to Run" steps verified
 - [x] No API keys or secrets committed to the repository
 
