@@ -9,19 +9,42 @@ import { useScrollToHash } from "@/lib/use-scroll-to-hash";
  * Empty while loading or if the backend is down, so the fake feed still shows.
  */
 export function usePostedPosts(platform: Platform) {
-  const [data, setData] = React.useState<{ posts: FeedPost[]; now: number } | null>(null);
+  const [attempt, setAttempt] = React.useState(0);
+  const [state, setState] = React.useState<{
+    status: "loading" | "loaded" | "error";
+    posts: FeedPost[];
+    now: number;
+    error: string | null;
+  }>({ status: "loading", posts: [], now: 0, error: null });
 
   React.useEffect(() => {
     let cancelled = false;
     api
       .posts({ status: "posted", platform, limit: 50 })
-      .then((posts) => !cancelled && setData({ posts, now: Date.now() }))
-      .catch(() => !cancelled && setData({ posts: [], now: Date.now() }));
+      .then((posts) => {
+        if (!cancelled) setState({ status: "loaded", posts, now: Date.now(), error: null });
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setState({
+            status: "error",
+            posts: [],
+            now: Date.now(),
+            error: error instanceof Error ? error.message : "Unable to load posts.",
+          });
+        }
+      });
     return () => {
       cancelled = true;
     };
-  }, [platform]);
+  }, [platform, attempt]);
 
-  useScrollToHash(data !== null);
-  return data ?? { posts: [], now: 0 };
+  useScrollToHash(state.status !== "loading");
+  return {
+    ...state,
+    retry: () => {
+      setState({ status: "loading", posts: [], now: 0, error: null });
+      setAttempt((value) => value + 1);
+    },
+  };
 }
