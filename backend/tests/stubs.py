@@ -170,7 +170,7 @@ def make_captions_payload(platforms: list[str]) -> dict:
             {
                 "platform": p,
                 "caption": f"Caption for {p}",
-                "hashtags": ["#KekKakNora", "#Test"],
+                "hashtags": ["#KKKopitiam", "#Test"],
                 "video_idea": f"idea for {p}" if p == "tiktok" else None,
                 "rationale": "facts only",
             }

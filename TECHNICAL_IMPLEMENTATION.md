@@ -634,7 +634,7 @@ wait
 
 ## 14. Synthetic data
 
-- 2 businesses: **Kek Kak Nora** (home bakery, halal-certified in the demo data) and **Butik Seri Mawar** (boutique).
+- 2 businesses: **KK Kopitiam** (home bakery, halal-certified in the demo data) and **Butik Seri Mawar** (boutique).
 - 4–6 products each, with product photos that are your own, AI-generated, or free-licence, with **no real people, brands or customers**.
 - For each seeded product, pre-generated cached outputs (improved image, one video, captions) in `seed/cached_outputs/`.
 - 30 days of simulated metrics; 10–15 fictional comments if you build the stretch feature.

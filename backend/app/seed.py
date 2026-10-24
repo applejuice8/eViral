@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from app.db import Base, SessionLocal, engine
 from app.models import AppUser, Business
 
-BUSINESS_NAME = "Kek Kak Nora"
+BUSINESS_NAME = "KK Kopitiam"
 OWNER_NAME = "Aisha Rahman"
 
 _ALEMBIC_INI = Path(__file__).resolve().parent.parent / "alembic.ini"

@@ -30,10 +30,10 @@ describe("CaptionText", () => {
 
   it("preserves multiple hashtags inside one caption", () => {
     render(
-      <CaptionText text="It's here! #KekKakNora #KekLapis #SarawakFood #PreOrderMY" />
+      <CaptionText text="It's here! #KKKopitiam #KekLapis #SarawakFood #PreOrderMY" />
     );
     for (const tag of [
-      "#KekKakNora",
+      "#KKKopitiam",
       "#KekLapis",
       "#SarawakFood",
       "#PreOrderMY",
@@ -56,16 +56,16 @@ describe("CaptionText hashtags", () => {
     render(
       <CaptionText
         text={"Something layered is coming...\n\nTunggu reveal-nya!"}
-        hashtags={["#KekKakNora", "#KekLapis"]}
+        hashtags={["#KKKopitiam", "#KekLapis"]}
       />
     );
     const line = screen.getByTestId("hashtags");
-    expect(line).toHaveTextContent("#KekKakNora #KekLapis");
+    expect(line).toHaveTextContent("#KKKopitiam #KekLapis");
     // The caption paragraph comes first, then the hashtag line.
     const caption = screen.getByText(/Something layered/);
     expect(caption.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(caption).not.toHaveTextContent("#KekKakNora");
-    for (const tag of ["#KekKakNora", "#KekLapis"]) {
+    expect(caption).not.toHaveTextContent("#KKKopitiam");
+    for (const tag of ["#KKKopitiam", "#KekLapis"]) {
       expect(screen.getByText(tag).className).toContain("text-info-600");
     }
   });
@@ -76,7 +76,7 @@ describe("CaptionText hashtags", () => {
   });
 
   it("shows the author handle before the caption", () => {
-    render(<CaptionText author="kekkaknora" text="Hello" />);
-    expect(screen.getByText("kekkaknora").tagName).toBe("STRONG");
+    render(<CaptionText author="kkkopitiam" text="Hello" />);
+    expect(screen.getByText("kkkopitiam").tagName).toBe("STRONG");
   });
 });

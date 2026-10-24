@@ -119,7 +119,7 @@ export function initials(name: string): string {
   return (words[0][0] + words[words.length - 1][0]).toUpperCase();
 }
 
-/** "Kek Kak Nora" -> "kekkaknora", like a social handle. */
+/** "KK Kopitiam" -> "kkkopitiam", like a social handle. */
 export function handleOf(businessName: string): string {
   return businessName.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
