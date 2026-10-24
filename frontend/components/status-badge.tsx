@@ -3,8 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import type { PostStatus } from "@/lib/api";
 import { statusLabel } from "@/lib/format";
 
-// One visual language everywhere: green = posted, blue = scheduled,
-// red = failed, grey = still a draft.
+// green = posted, blue = scheduled, red = failed, grey = draft
 const variant: Record<PostStatus, "success" | "info" | "danger" | "muted"> = {
   posted: "success",
   scheduled: "info",

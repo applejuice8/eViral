@@ -53,7 +53,7 @@ function IgIconRail() {
   );
 }
 
-// A real post from the mock publisher, drawn like the filler posts.
+// a real posted post, styled like the filler
 function RealIgPostCard({ post, now }: { post: FeedPost; now: number }) {
   const handle = handleOf(post.business_name);
   return (
