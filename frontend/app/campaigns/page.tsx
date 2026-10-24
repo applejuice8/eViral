@@ -11,9 +11,7 @@ import { api, ApiError, mediaUrl, type CampaignStatus, type CampaignSummary } fr
 import { formatDay, formatPrice, scheduleModeLabel } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-// Campaign statuses in the words the owner uses: a campaign that is still
-// building is a draft, "scheduled" means ready to go out, "done" has
-// launched, and "failed" needs a retry.
+// owner-facing words for campaign statuses
 const campaignStatusView: Record<
   CampaignStatus,
   { label: string; badge: "warning" | "info" | "success" | "danger" }

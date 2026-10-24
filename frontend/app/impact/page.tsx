@@ -42,7 +42,7 @@ export default function ImpactPage() {
         <Badge variant="warning">Estimated from mock data</Badge>
       </div>
 
-      {/* Hero stats — Twenty dashboard style: muted labels, large numbers */}
+      {/* hero stats */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-5">
         <Card className="ev-fade-up lg:col-span-3">
           <CardContent className="flex flex-col gap-4 p-5">
@@ -114,7 +114,7 @@ export default function ImpactPage() {
         />
       </div>
 
-      {/* Audience & consistency — Pinterest analytics style */}
+      {/* audience + consistency */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
@@ -173,7 +173,7 @@ export default function ImpactPage() {
         </Card>
       </div>
 
-      {/* Before / after + trend */}
+      {/* before/after + trend */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
