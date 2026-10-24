@@ -9,8 +9,6 @@ Stage = Literal["teaser", "launch", "detail", "reminder", "last_chance"]
 
 
 class CaptionRequest(BaseModel):
-    """Owner-entered facts. Captions may use ONLY these fields."""
-
     product_name: str = Field(min_length=1, max_length=80)
     price: Decimal | None = Field(default=None, ge=0, decimal_places=2)
     note: str | None = Field(default=None, max_length=140)

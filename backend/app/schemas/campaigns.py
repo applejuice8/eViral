@@ -22,14 +22,6 @@ MAX_POSTS_PER_CAMPAIGN = 30
 
 
 class ScheduleIn(BaseModel):
-    """Schedule from the wizard.
-
-    Matches the wizard's ScheduleData: `dates` holds the start date for
-    launch_sequence/weekly and every picked date for custom. `start_date`
-    may be sent instead of dates[0]. Custom can also send exact `slots`
-    (ISO datetimes; without an offset they are read as Malaysia time).
-    """
-
     mode: ScheduleMode
     start_date: date | None = None
     dates: list[date] = Field(default=[], max_length=MAX_POSTS_PER_CAMPAIGN)
@@ -50,15 +42,6 @@ class ScheduleIn(BaseModel):
 
 
 class CampaignCreate(BaseModel):
-    """Campaign from the wizard.
-
-    For `campaign_type == "promotion"` the campaign reuses an existing
-    product: `promo_kind` is "promote" (normal-price posts) or "discount"
-    with `discount_percent` and/or `promo_price_myr` (at least one; the
-    router derives the missing side from the product's price). Promo fields
-    are ignored for `new_product` campaigns.
-    """
-
     product_id: int
     language: Language = "mixed"
     platforms: list[Platform] = Field(min_length=1, max_length=3)
@@ -67,7 +50,7 @@ class CampaignCreate(BaseModel):
     promo_kind: PromoKind | None = None
     discount_percent: Decimal | None = Field(default=None, ge=1, le=99)
     promo_price_myr: Decimal | None = Field(default=None, gt=0)
-    # Occasion ("Raya sale", "weekend only") for promotion captions.
+    # promotion occasion, used in captions
     promo_note: str | None = Field(default=None, max_length=140)
 
     @field_validator("platforms")
@@ -83,7 +66,7 @@ class CampaignCreate(BaseModel):
     @model_validator(mode="after")
     def _check_promo(self) -> "CampaignCreate":
         if self.campaign_type != "promotion":
-            # Old clients / new-product campaigns: drop anything promo-ish.
+            # drop promo fields for new-product campaigns
             self.promo_kind = None
             self.discount_percent = None
             self.promo_price_myr = None
@@ -113,14 +96,10 @@ class Progress(BaseModel):
     understand: StepProgress
     images: StepProgress
     captions: StepProgress
-    # Campaigns built before the "checks" step was removed still carry a
-    # checks entry in their stored progress JSON; pydantic ignores the
-    # extra key, so it simply disappears from API responses.
+    # old progress JSON may still carry a checks key; pydantic drops it
 
 
 class PostResponse(BaseModel):
-    """One planned post. `image_url` is a path on this API (/media/...)."""
-
     id: int
     campaign_id: int
     product_id: int
@@ -140,8 +119,6 @@ class PostResponse(BaseModel):
 
 
 class FeedPostResponse(PostResponse):
-    """A post for the social demo pages."""
-
     business_name: str
 
 
@@ -165,14 +142,12 @@ class CampaignResponse(BaseModel):
 
 
 class CampaignSummary(BaseModel):
-    """A campaign in the list view."""
-
     id: int
     status: CampaignStatus
     product_id: int
     product_name: str
     photo_url: str
-    # Launch image if one was made, else the original photo.
+    # launch image, else the original photo
     cover_url: str
     language: Language
     platforms: list[Platform]
@@ -193,19 +168,15 @@ class CampaignSummary(BaseModel):
 class PostUpdate(BaseModel):
     caption: str | None = Field(default=None, min_length=1, max_length=2200)
     hashtags: list[str] | None = Field(default=None, max_length=30)
-    # Without an offset this is read as Malaysia time.
+    # no offset = Malaysia time
     scheduled_at: datetime | None = None
 
 
 class ImageChoiceRequest(BaseModel):
-    """Pick the campaign image at review time: original photo or AI version."""
-
     use_original_image: bool
 
 
 class PostCaption(BaseModel):
-    """One post as returned by the caption model."""
-
     id: str
     caption: str = Field(min_length=1)
     hashtags: list[str] = []

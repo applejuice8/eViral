@@ -8,7 +8,6 @@ MAX_ATTRIBUTES = 6
 
 
 def _clean_chips(values: list[str], limit: int) -> list[str]:
-    """Strip, drop empty and duplicate chips, keep at most `limit`."""
     chips: list[str] = []
     for value in values:
         chip = " ".join(str(value).split())
@@ -18,12 +17,10 @@ def _clean_chips(values: list[str], limit: int) -> list[str]:
 
 
 class Understood(BaseModel):
-    """What the vision model can see in the product photo."""
-
     product_type: str = Field(min_length=1)
     visible_attributes: list[str] = Field(min_length=1)
     suggested_category: str = ""
-    # Things the photo can't tell (flavour, ingredients, size, ...).
+    # things the photo can't tell
     uncertain: list[str] = []
 
     @field_validator("visible_attributes")
@@ -52,14 +49,6 @@ class ConfirmAttributesRequest(BaseModel):
 
 
 class ProductResponse(BaseModel):
-    """A product with its original photo.
-
-    `photo_url` is a path on this API (`/media/<file>`), not a full URL.
-    The frontend reaches the API through its `/backend/*` proxy, so it
-    should use `/backend` + photo_url. `price_myr` is a decimal string
-    ("65.00") or null.
-    """
-
     model_config = ConfigDict(from_attributes=True)
 
     id: int
