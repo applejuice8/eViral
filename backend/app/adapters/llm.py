@@ -1,10 +1,3 @@
-"""LLM provider adapters.
-
-`LLMProvider` is the interface the services depend on; concrete providers
-(OpenRouter today, a cached fallback later) plug in behind it so the rest
-of the app never talks to a vendor SDK directly.
-"""
-
 import json
 import logging
 from collections.abc import Callable
@@ -23,21 +16,15 @@ T = TypeVar("T")
 
 
 class LLMError(Exception):
-    """LLM call failed or returned unusable output."""
-
-
+    pass
 class LLMNotConfiguredError(Exception):
-    """No API key configured for the provider."""
-
-
+    pass
 class LLMProvider(Protocol):
     @property
     def model_name(self) -> str:
-        """Identifier of the underlying model (for responses and logs)."""
         ...
 
     def chat_json(self, system: str, user_payload: dict) -> dict:
-        """Send a system prompt + JSON user payload, return parsed JSON."""
         ...
 
     def vision_json(
@@ -47,10 +34,6 @@ class LLMProvider(Protocol):
         image_data_url: str,
         parse: Callable[[dict], T],
     ) -> tuple[T, str]:
-        """Send a prompt with one image, return (parse(json), model used).
-
-        `parse` validates the JSON; if it raises, the next model is tried.
-        """
         ...
 
     def text_json(
@@ -59,15 +42,10 @@ class LLMProvider(Protocol):
         user_payload: dict,
         parse: Callable[[dict], T],
     ) -> tuple[T, str]:
-        """Like chat_json, but walks the text model chain until `parse` passes.
-
-        Returns (parse(json), model used).
-        """
         ...
 
 
 def _load_json(content: str | None) -> dict:
-    """Parse model output, allowing for ```json fences some models add."""
     text = (content or "").strip()
     if text.startswith("```"):
         text = text.strip("`")
@@ -83,12 +61,6 @@ def _load_json(content: str | None) -> dict:
 
 
 class OpenRouterProvider:
-    """OpenRouter via the OpenAI SDK (OpenAI-compatible endpoint).
-
-    Uses JSON-object mode and validates/repairs with the caller's Pydantic
-    models — free models do not reliably support strict json_schema.
-    """
-
     def __init__(self, settings: Settings):
         if not settings.openrouter_api_key:
             raise LLMNotConfiguredError(
@@ -101,8 +73,7 @@ class OpenRouterProvider:
         self._model = settings.llm_model_text
         self._vision_models = settings.vision_models
         self._text_models = settings.text_models
-        # No SDK retries for the model chains: on a rate limit or error we
-        # move on to the next model instead.
+        # no SDK retries; fall through to the next model
         self._vision_client = OpenAI(
             base_url=settings.openrouter_base_url,
             api_key=settings.openrouter_api_key,
@@ -135,8 +106,7 @@ class OpenRouterProvider:
                 temperature=0.7,
             )
         except APIError as exc:
-            # SDK/auth/rate-limit errors all become LLMError so the router
-            # can map them to a clean 502.
+            # all SDK errors become LLMError
             raise LLMError(f"Provider request failed: {exc}") from exc
         content = response.choices[0].message.content
         try:
@@ -211,5 +181,4 @@ class OpenRouterProvider:
 
 @lru_cache
 def get_llm_provider() -> LLMProvider:
-    """FastAPI dependency; override with app.dependency_overrides in tests."""
     return OpenRouterProvider(get_settings())
