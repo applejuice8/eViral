@@ -1,5 +1,3 @@
-"""FastAPI application factory."""
-
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -23,14 +21,13 @@ from app.routers import (
 )
 from app.services.posting import run_tick
 
-# Show our own info logs (pipeline steps, posting) next to uvicorn's.
+# show app logs next to uvicorn's
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Run the posting job every 30 seconds while the app is up."""
     scheduler = None
     if get_settings().scheduler_enabled:
         scheduler = BackgroundScheduler()
@@ -57,7 +54,7 @@ def create_app() -> FastAPI:
     app.include_router(dashboard.router)
     app.include_router(internal.router)
 
-    # The LLM provider dependency raises this when no API key is set.
+    # raised when no API key is set
     @app.exception_handler(LLMNotConfiguredError)
     def llm_not_configured(request: Request, exc: LLMNotConfiguredError):
         return JSONResponse(
@@ -65,9 +62,7 @@ def create_app() -> FastAPI:
             content={"detail": str(exc)},
         )
 
-    # Downloaded YouCam results are stored locally and served as static
-    # files — YouCam deletes uploads/results within ~24h, so nothing can
-    # be hot-linked from their side.
+    # YouCam results expire, so they are served from local /media files
     media_dir = Path(settings.media_dir)
     media_dir.mkdir(parents=True, exist_ok=True)
     app.mount("/media", StaticFiles(directory=media_dir), name="media")
