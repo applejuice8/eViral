@@ -128,6 +128,31 @@ describe("BuildProgress", () => {
     expect((global.fetch as ReturnType<typeof vi.fn>).mock.calls.length).toBe(calls);
   });
 
+  it("says why the images step skipped when a note is present", async () => {
+    const done = step("done", 0, 1);
+    const skipped = {
+      ...done,
+      error:
+        "Image editing is off (MEDIA_MODE=passthrough) — posts use your original photo.",
+    };
+    global.fetch = vi.fn().mockResolvedValue(
+      respond(
+        campaign("scheduled", {
+          understand: done,
+          images: skipped,
+          captions: step("done", 1, 2),
+        })
+      )
+    ) as unknown as typeof fetch;
+
+    render(<BuildProgress campaignId={9} productName="Kek" onRetry={() => {}} />);
+    await tick(0);
+
+    const images = screen.getByText("Improving images").closest("li")!;
+    expect(images).toHaveAttribute("data-state", "done");
+    expect(images).toHaveTextContent(/original photo/i);
+  });
+
   it("shows the error and lets the owner retry when the build fails", async () => {
     const done = step("done", 0, 1);
     global.fetch = vi.fn().mockResolvedValue(

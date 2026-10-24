@@ -9,6 +9,10 @@ import tempfile
 
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 os.environ["SCHEDULER_ENABLED"] = "false"
+# Tests never touch YouCam (the provider is stubbed), and the images-skip
+# note in progress assumes the dev default — don't let a local .env with
+# MEDIA_MODE=live change what the pipeline records.
+os.environ["MEDIA_MODE"] = "passthrough"
 # Keep downloaded (stub) media out of the repo during tests.
 _media_tmp = tempfile.mkdtemp(prefix="eviral-test-media-")
 os.environ.setdefault("MEDIA_DIR", _media_tmp)

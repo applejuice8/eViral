@@ -147,35 +147,42 @@ export function BuildProgress({
           const state = step?.state ?? "pending";
           const time = step ? elapsed(step, now) : null;
           return (
-            <li
-              key={s.id}
-              data-state={state}
-              className={cn(
-                "flex items-center gap-2.5 text-[13px] transition-colors",
-                state === "done" && "text-gray-900",
-                state === "running" && "font-medium text-brand-700",
-                state === "pending" && "text-gray-400",
-                state === "failed" && "font-medium text-danger-700"
-              )}
-            >
-              {state === "done" ? (
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-success-100">
-                  <Check className="h-3 w-3 text-success-600" strokeWidth={3} />
-                </span>
-              ) : state === "running" ? (
-                <Loader2 className="h-5 w-5 animate-spin p-0.5 text-brand-500" />
-              ) : state === "failed" ? (
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-danger-100">
-                  <X className="h-3 w-3 text-danger-600" strokeWidth={3} />
-                </span>
-              ) : (
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gray-100">
-                  <s.icon className="h-3 w-3 text-gray-400" />
-                </span>
-              )}
-              <span className="flex-1">{s.label}</span>
-              {time && (
-                <span className="text-[11px] tabular-nums text-gray-400">{time}</span>
+            <li key={s.id} data-state={state} className="text-[13px]">
+              <div
+                className={cn(
+                  "flex items-center gap-2.5 transition-colors",
+                  state === "done" && "text-gray-900",
+                  state === "running" && "font-medium text-brand-700",
+                  state === "pending" && "text-gray-400",
+                  state === "failed" && "font-medium text-danger-700"
+                )}
+              >
+                {state === "done" ? (
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-success-100">
+                    <Check className="h-3 w-3 text-success-600" strokeWidth={3} />
+                  </span>
+                ) : state === "running" ? (
+                  <Loader2 className="h-5 w-5 animate-spin p-0.5 text-brand-500" />
+                ) : state === "failed" ? (
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-danger-100">
+                    <X className="h-3 w-3 text-danger-600" strokeWidth={3} />
+                  </span>
+                ) : (
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gray-100">
+                    <s.icon className="h-3 w-3 text-gray-400" />
+                  </span>
+                )}
+                <span className="flex-1">{s.label}</span>
+                {time && (
+                  <span className="text-[11px] tabular-nums text-gray-400">{time}</span>
+                )}
+              </div>
+              {/* A done step can still carry a note (progress.error) — e.g.
+                  why image editing was skipped. */}
+              {state === "done" && step?.error && (
+                <p className="ml-[30px] mt-0.5 text-[11px] leading-snug text-gray-500">
+                  {step.error}
+                </p>
               )}
             </li>
           );

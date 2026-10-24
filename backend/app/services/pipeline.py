@@ -141,8 +141,10 @@ def build_campaign(
 
         step = "images"
         _set_step(db, campaign, step, "running")
-        _make_images(db, campaign, media, settings)
-        _set_step(db, campaign, step, "done")
+        note = _make_images(db, campaign, media, settings)
+        # A note (in the error field) on a "done" step means images were
+        # skipped or fell back — the build screen shows it as the reason.
+        _set_step(db, campaign, step, "done", error=note)
 
         step = "captions"
         _set_step(db, campaign, step, "running")
@@ -209,11 +211,28 @@ def _save_asset(
 
 def _make_images(
     db: Session, campaign: Campaign, media: MediaProvider | None, settings: Settings
-) -> None:
+) -> str | None:
+    """Enhance the original photo and build the stage images.
+
+    Returns a note for progress.images.error explaining why posts fell back
+    to the original photo (None when real AI images were made). Media
+    problems never fail the campaign — they only leave a visible reason.
+    """
     product = campaign.product
     original = product.original_asset
     base = original
     stage_assets: dict[str, MediaAsset] = {}
+    note: str | None = None
+
+    if media is None:
+        if settings.media_mode == "live":
+            note = (
+                "Image editing is on, but the YouCam API key is missing or "
+                "invalid — posts use your original photo."
+            )
+            logger.warning("Campaign %s: %s", campaign.id, note)
+        else:
+            note = "Image editing is off (MEDIA_MODE=passthrough) — posts use your original photo."
 
     if media is not None:
         try:
@@ -230,6 +249,10 @@ def _make_images(
             )
         except Exception as exc:
             logger.warning("Enhance failed, using the original photo: %s", exc)
+            note = (
+                f"AI photo enhance failed ({str(exc)[:200]}) — "
+                "posts use your original photo."
+            )
 
         stages = list(dict.fromkeys(p.stage for p in campaign.posts if p.stage))
         if base is not original and stages:
@@ -258,6 +281,7 @@ def _make_images(
             business_id=campaign.business_id,
         )
     db.commit()
+    return note
 
 
 def _make_stage_images(
