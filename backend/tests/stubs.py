@@ -1,5 +1,3 @@
-"""Stub providers for tests — implement the adapter protocols."""
-
 from collections.abc import Callable
 from typing import Any
 
@@ -8,8 +6,6 @@ from app.adapters.media import MediaTask
 
 
 class StubLLMProvider:
-    """Returns a canned response, or raises, depending on configuration."""
-
     model_name = "stub-model"
 
     def __init__(
@@ -61,8 +57,6 @@ JPG_BYTES = b"\xff\xd8\xff\xe0" + b"stub-jpg-payload"
 
 
 class StubMediaProvider:
-    """Implements the MediaProvider protocol; records calls, canned results."""
-
     name = "stub-media"
 
     def __init__(

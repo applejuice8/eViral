@@ -1,17 +1,9 @@
-"""Shared pytest fixtures.
-
-Sets environment before the app is imported so app.config/db pick it
-up at import time.
-"""
-
 import os
 import tempfile
 
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 os.environ["SCHEDULER_ENABLED"] = "false"
-# Tests never touch YouCam (the provider is stubbed), and the images-skip
-# note in progress assumes the dev default — don't let a local .env with
-# MEDIA_MODE=live change what the pipeline records.
+# keep tests off YouCam and on the default MEDIA_MODE
 os.environ["MEDIA_MODE"] = "passthrough"
 # Keep downloaded (stub) media out of the repo during tests.
 _media_tmp = tempfile.mkdtemp(prefix="eviral-test-media-")
@@ -27,7 +19,6 @@ from app.main import app
 
 @pytest.fixture(autouse=True)
 def fresh_db():
-    """Every test starts with empty tables in the shared in-memory db."""
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
     yield

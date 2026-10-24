@@ -189,8 +189,6 @@ class TestUnderstoodSchema:
 
 
 class FakeCompletions:
-    """Stands in for client.chat.completions; one canned outcome per model."""
-
     def __init__(self, outcomes: dict):
         self.outcomes = outcomes
         self.models: list[str] = []
