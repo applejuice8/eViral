@@ -158,7 +158,11 @@ The tests use provider stubs and do not call OpenRouter or YouCam.
 
 ## How We Use Replit
 
-Replit is used to draw up the wireframe for the project for ideation. It was also used mainly to deploy our app once it was completed, which can be seen from the [live link](https://e-viral.replit.app/).
+- **Development:** Collaborative coding in a shared Repl using Multiplayer.
+- **Hosting:** The app is deployed with Replit Deployments at the [Live Demo link](https://e-viral.replit.app/) above.
+- **Secrets:** API keys are stored in Replit Secrets, never in the code.
+
+Proof of Use: 
 
 ## How We Use RunPod
 
@@ -197,7 +201,7 @@ RunPod is not used for this project.
 - [x] Slide deck link added
 - [ ] Demo video link added
 - [ ] Replit used, with proof of use in `submission/`
-- [ ] RunPod used, with proof of use in `submission/`
+- [x] RunPod used, with proof of use in `submission/` (Not Used -> No AI Training Performed)
 - [ ] Preliminary submission completed (`SDC2026_TeamName_Preliminary.pdf`)
 - [ ] Technology declaration completed (`SDC2026_TeamName_TechDeclaration.pdf`)
 - [ ] Submission files renamed with your team name (replace `TeamName`)
