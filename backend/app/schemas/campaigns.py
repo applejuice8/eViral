@@ -141,6 +141,12 @@ class PostUpdate(BaseModel):
     scheduled_at: datetime | None = None
 
 
+class ImageChoiceRequest(BaseModel):
+    """Pick the campaign image at review time: original photo or AI version."""
+
+    use_original_image: bool
+
+
 class PostCaption(BaseModel):
     """One post as returned by the caption model."""
 

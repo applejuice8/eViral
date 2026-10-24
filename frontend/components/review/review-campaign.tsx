@@ -7,7 +7,7 @@ import { AlertTriangle, ArrowLeft, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ImageCompare } from "@/components/review/image-compare";
+import { ImageCompare, type ImageChoice } from "@/components/review/image-compare";
 import { PostPreviewCard } from "@/components/review/post-preview-card";
 import { api, ApiError, mediaUrl, type Campaign, type Post } from "@/lib/api";
 import { useScrollToHash } from "@/lib/use-scroll-to-hash";
@@ -118,6 +118,21 @@ export function ReviewCampaign() {
     );
   }
 
+  async function chooseImage(choice: ImageChoice) {
+    if (imageChoice.pending) return;
+    setImageChoice({ pending: true, error: null });
+    try {
+      const campaign = await api.setImageChoice(campaignId, choice === "original");
+      setState({ status: "ready", campaign });
+      setImageChoice({ pending: false, error: null });
+    } catch (err) {
+      setImageChoice({
+        pending: false,
+        error: err instanceof Error ? err.message : "Couldn't update the image.",
+      });
+    }
+  }
+
   if (!validId || (state.status === "error" && state.notFound)) {
     return (
       <Message title="Campaign not found" body="This campaign doesn't exist or was deleted." />
@@ -137,6 +152,9 @@ export function ReviewCampaign() {
     .flatMap((g) => g.posts)
     .find((p) => !p.uses_original_image && p.image_url);
   const improved = mediaUrl(aiPost?.image_url);
+  const imageChoiceValue: ImageChoice = posts.some((p) => !p.uses_original_image)
+    ? "ai"
+    : "original";
   const times = posts.map((p) => p.scheduled_at).filter((t): t is string => !!t).sort();
   const scheduledCount = posts.filter((p) => p.status === "scheduled").length;
   const postedCount = posts.filter((p) => p.status === "posted").length;
@@ -175,10 +193,29 @@ export function ReviewCampaign() {
         <div className="space-y-4 lg:sticky lg:top-18 lg:self-start">
           <Card>
             <CardHeader>
-              <CardTitle>{improved ? "Your photo and the AI version" : "Your photo"}</CardTitle>
+              <CardTitle>
+                {improved ? "Your photo and the AI version" : "Your photo"}
+              </CardTitle>
+              {improved && (
+                <p className="text-[12px] font-normal text-gray-500">
+                  Pick which one your posts use — you can switch any time.
+                </p>
+              )}
             </CardHeader>
             <CardContent className="space-y-4">
-              <ImageCompare original={original} improved={improved} productName={product.name} />
+              <ImageCompare
+                original={original}
+                improved={improved}
+                productName={product.name}
+                choice={imageChoiceValue}
+                onChoose={improved ? chooseImage : undefined}
+                pending={imageChoice.pending}
+              />
+              {imageChoice.error && (
+                <p role="alert" className="text-xs text-danger-700">
+                  {imageChoice.error}
+                </p>
+              )}
               {!improved && (
                 <p className="text-[11px] text-gray-400">
                   Image editing was off for this campaign, so posts use your original photo.
