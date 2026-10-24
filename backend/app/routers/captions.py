@@ -17,7 +17,6 @@ def generate(
     request: CaptionRequest,
     provider: LLMProvider = Depends(get_llm_provider),
 ) -> CaptionResponse:
-    """Generate one caption per requested platform from owner-entered facts."""
     try:
         return generate_captions(request, provider)
     except LLMNotConfiguredError as exc:

@@ -52,7 +52,6 @@ def create(
     db: Session = Depends(get_db),
     user: AppUser = Depends(current_user),
 ) -> ProductResponse:
-    """Save a new product and its original photo."""
     name = name.strip()
     note = (note or "").strip() or None
     if not name:
@@ -77,7 +76,6 @@ def create(
 def list_products(
     db: Session = Depends(get_db), user: AppUser = Depends(current_user)
 ) -> list[ProductResponse]:
-    """All products of the business, newest first."""
     products = db.scalars(
         select(Product)
         .where(Product.business_id == user.business_id)
@@ -103,11 +101,6 @@ def understand(
     user: AppUser = Depends(current_user),
     provider: LLMProvider = Depends(get_llm_provider),
 ) -> ProductResponse:
-    """Describe what is visible in the photo (vision model).
-
-    The result is cached on the product; pass `?force=true` to run it again
-    (this also clears any confirmed attributes).
-    """
     product = get_product(product_id, db, user)
     if product.understood is not None and not force:
         return to_response(product)
@@ -127,6 +120,5 @@ def confirm(
     db: Session = Depends(get_db),
     user: AppUser = Depends(current_user),
 ) -> ProductResponse:
-    """Save the attributes the owner confirmed (the edited chips)."""
     product = get_product(product_id, db, user)
     return to_response(confirm_attributes(db, product, body.attributes))
