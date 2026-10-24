@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -14,6 +15,8 @@ Weekday = Literal["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 StepState = Literal["pending", "running", "done", "failed"]
 CampaignStatus = Literal["building", "scheduled", "done", "failed"]
 PostStatus = Literal["draft", "scheduled", "posted", "failed"]
+CampaignType = Literal["new_product", "promotion"]
+PromoKind = Literal["promote", "discount"]
 
 MAX_POSTS_PER_CAMPAIGN = 30
 
@@ -47,15 +50,56 @@ class ScheduleIn(BaseModel):
 
 
 class CampaignCreate(BaseModel):
+    """Campaign from the wizard.
+
+    For `campaign_type == "promotion"` the campaign reuses an existing
+    product: `promo_kind` is "promote" (normal-price posts) or "discount"
+    with `discount_percent` and/or `promo_price_myr` (at least one; the
+    router derives the missing side from the product's price). Promo fields
+    are ignored for `new_product` campaigns.
+    """
+
     product_id: int
     language: Language = "mixed"
     platforms: list[Platform] = Field(min_length=1, max_length=3)
     schedule: ScheduleIn
+    campaign_type: CampaignType = "new_product"
+    promo_kind: PromoKind | None = None
+    discount_percent: Decimal | None = Field(default=None, ge=1, le=99)
+    promo_price_myr: Decimal | None = Field(default=None, gt=0)
+    # Occasion ("Raya sale", "weekend only") for promotion captions.
+    promo_note: str | None = Field(default=None, max_length=140)
 
     @field_validator("platforms")
     @classmethod
     def _unique(cls, v: list[str]) -> list[str]:
         return list(dict.fromkeys(v))
+
+    @field_validator("promo_price_myr", "discount_percent")
+    @classmethod
+    def _quantize(cls, v: Decimal | None) -> Decimal | None:
+        return None if v is None else v.quantize(Decimal("0.01"))
+
+    @model_validator(mode="after")
+    def _check_promo(self) -> "CampaignCreate":
+        if self.campaign_type != "promotion":
+            # Old clients / new-product campaigns: drop anything promo-ish.
+            self.promo_kind = None
+            self.discount_percent = None
+            self.promo_price_myr = None
+            self.promo_note = None
+            return self
+        if self.promo_kind is None:
+            raise ValueError("promotion campaigns need promo_kind")
+        if self.promo_kind == "promote" and (
+            self.discount_percent is not None or self.promo_price_myr is not None
+        ):
+            raise ValueError("a promote campaign cannot have a discount")
+        if self.promo_kind == "discount" and (
+            self.discount_percent is None and self.promo_price_myr is None
+        ):
+            raise ValueError("a discount needs discount_percent or promo_price_myr")
+        return self
 
 
 class StepProgress(BaseModel):
@@ -111,6 +155,11 @@ class CampaignResponse(BaseModel):
     error: str | None
     created_at: UTCDateTime
     updated_at: UTCDateTime
+    campaign_type: CampaignType
+    promo_kind: PromoKind | None
+    discount_percent: Decimal | None
+    promo_price_myr: Decimal | None
+    promo_note: str | None
     product: ProductResponse
     posts: list[PostResponse]
 
@@ -128,6 +177,11 @@ class CampaignSummary(BaseModel):
     language: Language
     platforms: list[Platform]
     schedule_mode: ScheduleMode
+    campaign_type: CampaignType
+    promo_kind: PromoKind | None
+    discount_percent: Decimal | None
+    promo_price_myr: Decimal | None
+    promo_note: str | None
     posts_total: int
     posts_scheduled: int
     posts_posted: int

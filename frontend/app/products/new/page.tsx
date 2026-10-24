@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WizardProgress } from "@/components/wizard/progress-bar";
+import { StepType } from "@/components/wizard/step-type";
 import { StepTellUs, type TellUsData } from "@/components/wizard/step-tell-us";
 import {
   StepConfirm,
@@ -13,29 +14,58 @@ import {
   type VisionState,
 } from "@/components/wizard/step-confirm";
 import {
+  StepPromotion,
+  EMPTY_PROMO,
+  promoError,
+  promoPayload,
+  type PromoData,
+} from "@/components/wizard/step-promotion";
+import {
   StepSchedule,
   type ScheduleData,
 } from "@/components/wizard/step-schedule";
 import { BuildProgress } from "@/components/wizard/build-progress";
-import { api, ApiError, mediaUrl, type Product } from "@/lib/api";
+import { api, ApiError, mediaUrl, type CampaignType, type Product } from "@/lib/api";
 
-const STEPS = ["Tell us", "Confirm", "Schedule", "Build"];
+type StepId = "type" | "tellus" | "confirm" | "pick" | "schedule" | "build";
 
-const STEP_TITLES = [
-  {
+const FLOWS: Record<CampaignType, StepId[]> = {
+  new_product: ["tellus", "confirm", "schedule", "build"],
+  promotion: ["pick", "schedule", "build"],
+};
+
+const FLOW_LABELS: Record<StepId, string> = {
+  type: "Type",
+  tellus: "Tell us",
+  confirm: "Confirm",
+  pick: "Pick product",
+  schedule: "Schedule",
+  build: "Build",
+};
+
+const STEP_TITLES: Record<StepId, { title: string; sub: string }> = {
+  type: {
+    title: "What are we launching?",
+    sub: "Pick the kind of campaign you want to run.",
+  },
+  tellus: {
     title: "Tell us about your product",
     sub: "A name and a photo is all we need — the rest is optional.",
   },
-  {
+  confirm: {
     title: "Confirm what we see",
     sub: "Captions are written only from facts you confirm here.",
   },
-  {
+  pick: {
+    title: "Promote a product",
+    sub: "Pick something you already sell — no photo upload needed.",
+  },
+  schedule: {
     title: "Pick a schedule",
     sub: "Posts go out automatically at the times you pick.",
   },
-  { title: "Build your campaign", sub: "" },
-];
+  build: { title: "Build your campaign", sub: "" },
+};
 
 function errorText(err: unknown): string {
   return err instanceof ApiError ? err.message : "Something went wrong. Please try again.";
@@ -55,9 +85,13 @@ function sameInput(a: Saved | null, b: TellUsData): boolean {
 
 export default function NewProductPage() {
   const router = useRouter();
-  const [step, setStep] = React.useState(0);
+  const [step, setStep] = React.useState(0); // 0 = type, then 1..n = active flow
+  const [campaignType, setCampaignType] = React.useState<CampaignType | null>(null);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  const flow = campaignType ? FLOWS[campaignType] : [];
+  const stepId: StepId = step === 0 ? "type" : flow[step - 1];
 
   const [tellUs, setTellUs] = React.useState<TellUsData>({
     name: "",
@@ -71,6 +105,11 @@ export default function NewProductPage() {
   const [product, setProduct] = React.useState<Product | null>(null);
   const savedFrom = React.useRef<Saved | null>(null);
 
+  // Promotion flow: existing products to pick from, the pick, and the promo.
+  const [products, setProducts] = React.useState<Product[] | null>(null);
+  const [picked, setPicked] = React.useState<Product | null>(null);
+  const [promo, setPromo] = React.useState<PromoData>(EMPTY_PROMO);
+
   const [vision, setVision] = React.useState<VisionState>({ status: "loading" });
   const [confirm, setConfirm] = React.useState<ConfirmData>({ attributes: [] });
   const [schedule, setSchedule] = React.useState<ScheduleData>({
@@ -82,6 +121,18 @@ export default function NewProductPage() {
     dates: [],
   });
   const [campaignId, setCampaignId] = React.useState<number | null>(null);
+
+  // Products for the promotion picker (fetched once; harmless if unused).
+  React.useEffect(() => {
+    let cancelled = false;
+    api
+      .listProducts()
+      .then((list) => !cancelled && setProducts(list))
+      .catch(() => !cancelled && setProducts([]));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Free the preview object URL when leaving the wizard.
   const photoUrlRef = React.useRef<string | null>(null);
@@ -97,6 +148,11 @@ export default function NewProductPage() {
 
   // Ignore late answers for a product the owner has since replaced.
   const activeProductId = React.useRef<number | null>(null);
+
+  function chooseType(type: CampaignType) {
+    setCampaignType(type);
+    if (step === 0) setStep(1);
+  }
 
   async function understand(id: number) {
     activeProductId.current = id;
@@ -118,7 +174,7 @@ export default function NewProductPage() {
   async function submitTellUs() {
     if (!tellUs.photo) return;
     if (product && sameInput(savedFrom.current, tellUs)) {
-      setStep(1);
+      setStep(2);
       if (vision.status === "error") understand(product.id);
       return;
     }
@@ -131,7 +187,7 @@ export default function NewProductPage() {
     savedFrom.current = { ...tellUs };
     setProduct(created);
     setConfirm({ attributes: [] });
-    setStep(1);
+    setStep(2);
     understand(created.id);
   }
 
@@ -139,10 +195,28 @@ export default function NewProductPage() {
     if (!product) return;
     const updated = await api.confirmAttributes(product.id, confirm.attributes);
     setProduct(updated);
-    setStep(2);
+    setStep(3);
   }
 
   async function startBuild() {
+    if (campaignType === "promotion" && picked) {
+      const campaign = await api.createCampaign({
+        product_id: picked.id,
+        language: schedule.language,
+        platforms: schedule.platforms,
+        schedule: {
+          mode: schedule.mode,
+          dates: schedule.dates,
+          time: schedule.time || "20:00",
+          days: schedule.days,
+        },
+        campaign_type: "promotion",
+        ...promoPayload(promo, picked),
+      });
+      setCampaignId(campaign.id);
+      setStep(flow.indexOf("build") + 1);
+      return;
+    }
     if (!product) return;
     const campaign = await api.createCampaign({
       product_id: product.id,
@@ -154,18 +228,21 @@ export default function NewProductPage() {
         time: schedule.time || "20:00",
         days: schedule.days,
       },
+      campaign_type: "new_product",
     });
     setCampaignId(campaign.id);
-    setStep(3);
+    setStep(flow.indexOf("build") + 1);
   }
 
   async function next() {
     setBusy(true);
     setError(null);
     try {
-      if (step === 0) await submitTellUs();
-      else if (step === 1) await submitConfirm();
-      else if (step === 2) await startBuild();
+      if (step === 0) setStep(1);
+      else if (stepId === "tellus") await submitTellUs();
+      else if (stepId === "confirm") await submitConfirm();
+      else if (stepId === "pick") setStep(step + 1);
+      else if (stepId === "schedule") await startBuild();
     } catch (err) {
       setError(errorText(err));
     } finally {
@@ -182,33 +259,38 @@ export default function NewProductPage() {
     }
   }
 
+  const promoInvalid = promoError(promo, picked) !== null;
   const canContinue =
     step === 0
-      ? tellUs.name.trim().length > 0 && tellUs.photo !== null
-      : step === 1
-        ? vision.status === "ready" && confirm.attributes.length > 0
-        : step === 2
-          ? schedule.platforms.length > 0 &&
-            (schedule.mode === "launch_sequence"
-              ? schedule.dates.length === 1
-              : schedule.mode === "weekly"
-                ? schedule.days.length > 0 && schedule.dates.length === 1
-                : schedule.dates.length > 0)
-          : false;
+      ? campaignType !== null
+      : stepId === "tellus"
+        ? tellUs.name.trim().length > 0 && tellUs.photo !== null
+        : stepId === "confirm"
+          ? vision.status === "ready" && confirm.attributes.length > 0
+          : stepId === "pick"
+            ? picked !== null && !promoInvalid
+            : stepId === "schedule"
+              ? schedule.platforms.length > 0 &&
+                (schedule.mode === "launch_sequence"
+                  ? schedule.dates.length === 1
+                  : schedule.mode === "weekly"
+                    ? schedule.days.length > 0 && schedule.dates.length === 1
+                    : schedule.dates.length > 0)
+              : false;
 
-  const building = step === 3;
+  const building = stepId === "build";
   const photoUrl = tellUs.photoUrl ?? mediaUrl(product?.photo_url);
+  const progressSteps = ["Type", ...flow.map((id) => FLOW_LABELS[id])];
+  const heading = STEP_TITLES[stepId];
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">
-            {STEP_TITLES[step].title}
-          </h1>
+          <h1 className="text-xl font-semibold text-gray-900">{heading.title}</h1>
           <p className="mt-0.5 text-[13px] text-gray-500">
-            {building ? "Hang tight." : `Step ${step + 1} of ${STEPS.length} · `}
-            {STEP_TITLES[step].sub}
+            {building ? "Hang tight." : `Step ${step + 1} of ${progressSteps.length} · `}
+            {heading.sub}
           </p>
         </div>
         {!building && (
@@ -220,16 +302,17 @@ export default function NewProductPage() {
         )}
       </div>
 
-      <WizardProgress steps={STEPS} current={step} />
+      <WizardProgress steps={progressSteps} current={step} />
 
       <div className="ev-fade-up" key={step}>
-        {step === 0 && (
+        {stepId === "type" && <StepType value={campaignType} onChange={chooseType} />}
+        {stepId === "tellus" && (
           <StepTellUs
             data={tellUs}
             onChange={(p) => setTellUs((d) => ({ ...d, ...p }))}
           />
         )}
-        {step === 1 && (
+        {stepId === "confirm" && (
           <StepConfirm
             photoUrl={photoUrl}
             vision={vision}
@@ -239,7 +322,17 @@ export default function NewProductPage() {
             onRetry={() => product && understand(product.id)}
           />
         )}
-        {step === 2 && (
+        {stepId === "pick" && (
+          <StepPromotion
+            products={products}
+            loading={products === null}
+            picked={picked}
+            onPick={setPicked}
+            promo={promo}
+            onPromoChange={(p) => setPromo((d) => ({ ...d, ...p }))}
+          />
+        )}
+        {stepId === "schedule" && (
           <StepSchedule
             data={schedule}
             onChange={(p) =>
@@ -250,11 +343,11 @@ export default function NewProductPage() {
             }
           />
         )}
-        {step === 3 && campaignId !== null && (
+        {stepId === "build" && campaignId !== null && (
           <BuildProgress
             key={campaignId}
             campaignId={campaignId}
-            productName={product?.name ?? tellUs.name.trim()}
+            productName={product?.name ?? picked?.name ?? tellUs.name.trim()}
             onRetry={retryBuild}
           />
         )}
@@ -286,13 +379,15 @@ export default function NewProductPage() {
             onClick={() => canContinue && !busy && next()}
             disabled={!canContinue || busy}
             title={
-              !canContinue && step === 0
+              !canContinue && stepId === "tellus"
                 ? "Add a product name and photo to continue"
-                : undefined
+                : !canContinue && stepId === "pick"
+                  ? "Pick a product to continue"
+                  : undefined
             }
           >
             {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-            {step === 2 ? "Build campaign" : "Continue"}
+            {stepId === "schedule" ? "Build campaign" : "Continue"}
             {!busy && <ArrowRight className="h-4 w-4" />}
           </Button>
         )}

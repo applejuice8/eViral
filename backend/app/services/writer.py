@@ -116,6 +116,13 @@ missing, leave it out. "seen_in_photo" lists what the owner confirmed is in the
 photo; you may describe those things.
 If facts.price_myr is null, do not mention any price. If it is set, write it
 exactly as "RM" + the number (e.g. RM65).
+Promotions: facts.promo is set only when the campaign promotes an existing
+product.
+- promo.kind "promote": normal posts at the product's usual price.
+- promo.kind "discount": the product is on offer. Mention the deal naturally,
+  e.g. "was RM15, now RM12", always using promo.was_price_myr and
+  promo.now_price_myr exactly. If promo.occasion is set (Raya, Merdeka,
+  weekend only...), mention it too. Never invent other discounts or dates.
 Language: 'ms' = Bahasa Melayu, 'en' = English, 'mixed' = natural Malaysian
 mix of BM and English.
 Write one post for every item in "posts" and keep its "id". Match the stage:
@@ -161,7 +168,25 @@ def campaign_payload(
     seen_in_photo: list[str],
     language: str,
     slots: list[CaptionSlot],
+    campaign_type: str = "new_product",
+    promo_kind: str | None = None,
+    discount_percent: Decimal | None = None,
+    promo_price_myr: Decimal | None = None,
+    promo_note: str | None = None,
 ) -> dict:
+    promo: dict | None = None
+    if campaign_type == "promotion" and promo_kind == "discount" and promo_price_myr:
+        promo = {
+            "kind": "discount",
+            # The original price stays in facts.price_myr; the offer needs
+            # both numbers so the captions can say "was X, now Y".
+            "was_price_myr": price_text(price_myr) if price_myr is not None else None,
+            "now_price_myr": price_text(promo_price_myr),
+            "percent_off": None if discount_percent is None else float(discount_percent),
+            "occasion": promo_note,
+        }
+    elif campaign_type == "promotion" and promo_kind == "promote":
+        promo = {"kind": "promote", "occasion": promo_note}
     return {
         "facts": {
             "business_name": business_name,
@@ -169,6 +194,7 @@ def campaign_payload(
             "price_myr": None if price_myr is None else price_text(price_myr),
             "note": note,
             "seen_in_photo": seen_in_photo,
+            "promo": promo,
         },
         "language": language,
         "posts": [
