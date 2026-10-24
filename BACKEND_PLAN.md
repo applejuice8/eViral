@@ -44,7 +44,7 @@ Everything below is organized as **features (F1–F10)**. Each feature lists: wh
 **Steps:**
 1. Scaffold `apps/api/` per the doc's layout: `main.py` (lifespan: `create_all` + start scheduler), `config.py` (pydantic-settings reading `.env`), `db.py` (engine, pooled Neon string), `models.py`, `schemas.py`.
 2. Define all 10 tables from §5: `business`, `app_user`, `media_asset`, `product`, `campaign`, `schedule_rule`, `post_draft`, `media_task`, `approval`, `audit_log`, `post_metric`. Notes: `price_myr numeric(10,2) nullable`; money never float; `audit_log` append-only.
-3. Seed script (`seed.py` + `reset_db.py`): 2 fictional businesses (Kek Kak Nora bakery halal-certified, Butik Seri Mawar boutique), 4–6 products each, one user (Owner Aisha), a pre-built launch campaign for "Kek Lapis Sarawak Premium" whose shape **mirrors `demoCampaign` in `lib/data.ts`** (7 drafts, 3 platforms, statuses incl. one `blocked` with PRICE_MISMATCH, timestamps Oct 26–Nov 2), 30 days of simulated `post_metric`.
+3. Seed script (`seed.py` + `reset_db.py`): 2 fictional businesses (KK Kopitiam bakery halal-certified, Butik Seri Mawar boutique), 4–6 products each, one user (Owner Aisha), a pre-built launch campaign for "Kek Lapis Sarawak Premium" whose shape **mirrors `demoCampaign` in `lib/data.ts`** (7 drafts, 3 platforms, statuses incl. one `blocked` with PRICE_MISMATCH, timestamps Oct 26–Nov 2), 30 days of simulated `post_metric`.
 4. `GET /health`; CORS or (preferred) rely on the Next.js rewrite `/backend/* → :8000/*`.
 5. `.env.example` with every var from §15.
 

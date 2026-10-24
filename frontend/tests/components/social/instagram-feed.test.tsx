@@ -14,11 +14,11 @@ describe("InstagramFeed", () => {
         Promise.resolve([
           {
             id: 2,
-            business_name: "Kek Kak Nora",
+            business_name: "KK Kopitiam",
             product_name: "Kek Lapis",
             platform: "instagram",
             caption: "Something lapis is coming...",
-            hashtags: ["#KekKakNora"],
+            hashtags: ["#KKKopitiam"],
             image_url: "/media/stage_x.png",
             status: "posted",
             posted_at: new Date().toISOString(),
@@ -37,7 +37,7 @@ describe("InstagramFeed", () => {
     expect(articles[0]).toHaveAttribute("id", "post-2");
     expect(articles[0]).toHaveTextContent("Something lapis is coming...");
     expect(screen.getByAltText("Kek Lapis")).toHaveAttribute("src", "/backend/media/stage_x.png");
-    expect(screen.getByText("#KekKakNora").className).toContain("text-info-600");
+    expect(screen.getByText("#KKKopitiam").className).toContain("text-info-600");
     // Filler posts are still there after the real one.
     expect(articles.length).toBeGreaterThan(1);
   });

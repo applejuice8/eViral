@@ -301,7 +301,7 @@ export function FacebookFeed() {
               <p className="truncate text-[14px] font-semibold text-gray-900">
                 Kek Lapis Sarawak Premium
               </p>
-              <p className="text-[12px] text-gray-500">kekkaknora.my</p>
+              <p className="text-[12px] text-gray-500">kkkopitiam.my</p>
             </div>
           </div>
 

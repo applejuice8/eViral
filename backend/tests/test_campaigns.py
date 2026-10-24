@@ -31,7 +31,7 @@ def captions_reply(payload: dict) -> dict:
             {
                 "id": p["id"],
                 "caption": f"{p['stage']} post for {p['platform']} RM65 #Kek",
-                "hashtags": ["#KekKakNora", "KekLapis", "#kek lapis"],
+                "hashtags": ["#KKKopitiam", "KekLapis", "#kek lapis"],
                 "video_idea": "Slice the cake slowly" if p["platform"] == "tiktok" else None,
             }
             for p in payload["posts"]
@@ -199,7 +199,7 @@ class TestBuild:
         assert post["image_url"] == body["product"]["photo_url"]
         assert post["uses_original_image"] is True
         assert post["caption"] == "teaser post for facebook RM65"
-        assert post["hashtags"] == ["#KekKakNora", "#KekLapis", "#Kek"]
+        assert post["hashtags"] == ["#KKKopitiam", "#KekLapis", "#Kek"]
         assert post["scheduled_at"] == "2030-11-01T12:00:00Z"
         tiktok = [p for p in body["posts"] if p["platform"] == "tiktok"]
         assert all(p["video_idea"] == "Slice the cake slowly" for p in tiktok)

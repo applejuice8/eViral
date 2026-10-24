@@ -1,5 +1,5 @@
 // Mock data for the Socials pages (Instagram / Facebook / TikTok web mocks).
-// All content is synthetic and reuses the demo brand (Kek Kak Nora / Kek Lapis).
+// All content is synthetic and reuses the demo brand (KK Kopitiam / Kek Lapis).
 
 export interface SocialUser {
   name: string;
@@ -33,12 +33,12 @@ export interface IgSuggestion {
 
 export const igUser: SocialUser = {
   name: "Aisha Rahman",
-  handle: "kekkaknora",
+  handle: "kkkopitiam",
   initials: "AR",
 };
 
 export const igStories: IgStory[] = [
-  { id: "s1", user: { name: "Your story", handle: "kekkaknora", initials: "AR" }, viewed: true },
+  { id: "s1", user: { name: "Your story", handle: "kkkopitiam", initials: "AR" }, viewed: true },
   { id: "s2", user: { name: "nurul.bakes", handle: "nurul.bakes", initials: "NB" }, viewed: false },
   { id: "s3", user: { name: "sarawak.eats", handle: "sarawak.eats", initials: "SE" }, viewed: false },
   { id: "s4", user: { name: "kuchingfoodie", handle: "kuchingfoodie", initials: "KF" }, viewed: false },
@@ -48,7 +48,7 @@ export const igStories: IgStory[] = [
 export const igPosts: IgPost[] = [
   {
     id: "p1",
-    user: { name: "Kek Kak Nora", handle: "kekkaknora", initials: "KN" },
+    user: { name: "KK Kopitiam", handle: "kkkopitiam", initials: "KK" },
     timeAgo: "2h",
     image: "/assets/kek-lapis-improved.svg",
     alt: "Kek Lapis Sarawak Premium — layered cake, AI-improved photo",
@@ -106,7 +106,7 @@ export const fbStories: FbStory[] = [
 export const fbPosts: FbPost[] = [
   {
     id: "fp1",
-    user: { name: "Kek Kak Nora", handle: "kekkaknora", initials: "KN" },
+    user: { name: "KK Kopitiam", handle: "kkkopitiam", initials: "KK" },
     timeAgo: "2h",
     text: "Kek Lapis Sarawak Premium kini dibuka untuk tempahan! RM65 sebiji. Batch terhad — sedia 1 Dis. Tempah awal supaya tak kecewa.",
     image: "/assets/kek-lapis-improved.svg",
@@ -155,10 +155,10 @@ export interface TtVideo {
 export const ttVideos: TtVideo[] = [
   {
     id: "tt1",
-    user: { name: "Kek Kak Nora", handle: "kekkaknora", initials: "KN" },
+    user: { name: "KK Kopitiam", handle: "kkkopitiam", initials: "KK" },
     caption: "POV: the layered cake everyone asks about is almost here",
     hashtags: ["#KekLapis", "#HomeBakerMY", "#FoodTokMY"],
-    sound: "original sound - Kek Kak Nora",
+    sound: "original sound - KK Kopitiam",
     image: "/assets/kek-lapis-improved.svg",
     imageAlt: "Kek Lapis Sarawak Premium — layered cake",
     likes: "12.4K",

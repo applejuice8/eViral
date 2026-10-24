@@ -42,7 +42,7 @@ uv run alembic upgrade head
 ## Seed data
 
 ```bash
-uv run python -m app.seed          # migrate, then add business "Kek Kak Nora" + owner "Aisha Rahman"
+uv run python -m app.seed          # migrate, then add business "KK Kopitiam" + owner "Aisha Rahman"
 uv run python -m app.seed --reset  # drop all data first (prototype, data loss is fine)
 ```
 

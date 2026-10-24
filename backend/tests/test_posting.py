@@ -113,7 +113,7 @@ class TestReads:
 
         rows = api.get("/posts", params={"status": "posted"}).json()
         assert [r["id"] for r in rows] == [second, first]
-        assert rows[0]["business_name"] == "Kek Kak Nora"
+        assert rows[0]["business_name"] == "KK Kopitiam"
         assert rows[0]["product_name"] == "Kek Lapis Sarawak Premium"
         assert rows[0]["caption"] and rows[0]["hashtags"] and rows[0]["image_url"]
 
@@ -130,7 +130,7 @@ class TestReads:
         api.post(f"/posts/{ids[0]}/publish-now")
 
         body = api.get("/summary").json()
-        assert body["business_name"] == "Kek Kak Nora"
+        assert body["business_name"] == "KK Kopitiam"
         assert body["owner_name"] == "Aisha Rahman"
         assert body["scheduled"] == 11
         assert body["posted"] == 1
