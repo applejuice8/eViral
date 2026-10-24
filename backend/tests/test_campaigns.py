@@ -187,7 +187,7 @@ class TestBuild:
 
         body = api.get(f"/campaigns/{res.json()['id']}").json()
         assert body["status"] == "scheduled"
-        assert set(body["progress"]) == {"understand", "images", "captions", "checks"}
+        assert set(body["progress"]) == {"understand", "images", "captions"}
         for step in body["progress"].values():
             assert step["state"] == "done"
             assert step["started_at"].endswith("Z") and step["finished_at"]
@@ -262,7 +262,6 @@ class TestBuild:
         assert body["status"] == "failed"
         assert body["progress"]["captions"]["state"] == "failed"
         assert "skipped posts" in body["progress"]["captions"]["error"]
-        assert body["progress"]["checks"]["state"] == "pending"
         assert body["error"].startswith("captions failed")
         assert all(p["status"] == "failed" for p in body["posts"])
 

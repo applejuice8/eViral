@@ -147,10 +147,8 @@ def build_campaign(
         step = "captions"
         _set_step(db, campaign, step, "running")
         _write_captions(db, campaign, llm)
-        _set_step(db, campaign, step, "done")
-
-        step = "checks"
-        _set_step(db, campaign, step, "running")
+        # Final tidy-up (hashtags, fallbacks, post status) runs as part of the
+        # captions step — it is no longer a visible progress step of its own.
         _check_posts(campaign)
         campaign.status = "scheduled"
         _set_step(db, campaign, step, "done")
