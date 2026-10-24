@@ -1,9 +1,9 @@
 # eViral — Web
 
 Frontend for **eViral**, an Orbyte module for AI-assisted social media marketing.
-All screens read real data from the FastAPI backend (`../backend`) through the
-Next rewrite at `/backend/*` (`lib/api.ts`). Only the filler posts on the demo
-social pages are fake (`lib/social-mock.ts`).
+All screens read data from the FastAPI backend (`../backend`) through the Next
+rewrite at `/backend/*` (`lib/api.ts`). Social pages show only posts returned
+by the backend's mock publisher; they do not include fixture feed content.
 
 Stack: Next.js 16 (App Router) · TypeScript · Tailwind CSS v4 · shadcn-style primitives (`components/ui`) · pnpm.
 
