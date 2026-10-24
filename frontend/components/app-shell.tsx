@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -10,7 +11,6 @@ import {
   CalendarDays,
   ScrollText,
   TrendingUp,
-  Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
@@ -126,9 +126,14 @@ function SidebarContent({ owner }: { owner: Owner }) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2 px-5 pt-5 pb-6">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-white">
-          <Zap className="h-4 w-4" fill="currentColor" />
-        </span>
+        <Image
+          src="/logo.png"
+          alt="eViral logo"
+          width={32}
+          height={32}
+          unoptimized
+          className="h-8 w-8 shrink-0 rounded-lg object-cover"
+        />
         <div className="leading-tight">
           <p className="text-[15px] font-bold text-gray-900">eViral</p>
           <p className="text-[11px] text-gray-400">an Orbyte module</p>
