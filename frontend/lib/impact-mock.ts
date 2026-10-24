@@ -1,16 +1,14 @@
-// Mock statistics for the Impact dashboard (#33). Posting is mocked, so the
-// reach numbers and savings are synthetic estimates — shaped like the future
-// GET /impact response so the page can switch to real aggregation later.
+// mock stats for the impact page, shaped like the future GET /impact
 
 import type { Platform } from "@/lib/api";
 
-/** Config, not hardcode: the manual baselines the impact figures are measured against. */
+// manual baselines the figures are measured against
 export interface ImpactBaselines {
-  /** Hours a manual launch takes (≈3 evenings / campaign). */
+  // hours per manual launch
   manualHoursPerCampaign: number;
-  /** Minutes a campaign takes with eViral (input → approval). */
+  // minutes per eViral campaign
   eviralMinutesPerCampaign: number;
-  /** Agency / social media manager monthly cost range (RM). */
+  // agency cost range (RM/month)
   agencyCostMinMyr: number;
   agencyCostMaxMyr: number;
 }
@@ -22,7 +20,7 @@ export interface PlatformReach {
 }
 
 export interface ConsistencyWeek {
-  /** "yyyy-MM-dd" of the week's Monday. */
+  // the week's Monday, "yyyy-MM-dd"
   weekOf: string;
   planned: number;
   filled: number;
@@ -35,28 +33,28 @@ export interface BlockedError {
 
 export interface ImpactData {
   baselines: ImpactBaselines;
-  /** Estimated people reached by published posts. */
+  // estimated reach of published posts
   audience: {
     total: number;
     byPlatform: PlatformReach[];
   };
-  /** Cumulative hours saved vs the manual baseline. */
+  // hours saved vs the manual baseline
   timeSavedHours: number;
   campaignsLaunched: number;
-  /** RM saved vs the agency baseline, since signing up. */
+  // RM saved vs the agency baseline
   costAvoidedMyr: number;
-  /** Drafts the fact validator stopped from publishing. */
+  // drafts the validator stopped
   errorsBlocked: {
     total: number;
     recent: BlockedError[];
   };
-  /** % of posts published at their scheduled time. */
+  // posts published on time, percent
   onTimeRatePct: number;
   postsTotal: number;
   postsOnTime: number;
-  /** Planned vs actually-filled slots, most recent last. */
+  // planned vs filled slots, oldest first
   consistency: ConsistencyWeek[];
-  /** Cumulative RM saved at the end of each month, oldest first. */
+  // cumulative RM saved per month
   cumulativeSavings: { month: string; savedMyr: number }[];
 }
 
@@ -107,7 +105,7 @@ export const MOCK_IMPACT: ImpactData = {
   ],
 };
 
-/** "18540" -> "18.5k" for big stat numbers. */
+// 18540 -> "18.5k"
 export function compactNumber(n: number): string {
   if (n >= 1_000_000) return `${trim(n / 1_000_000)}M`;
   if (n >= 1_000) return `${trim(n / 1_000)}k`;
@@ -118,7 +116,7 @@ function trim(n: number): string {
   return n.toFixed(n >= 100 || Number.isInteger(n) ? 0 : 1).replace(/\.0$/, "");
 }
 
-/** 34.5 -> "34h 30m" */
+// 34.5 -> "34h 30m"
 export function formatHours(hours: number): string {
   const h = Math.floor(hours);
   const m = Math.round((hours - h) * 60);

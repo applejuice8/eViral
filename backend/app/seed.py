@@ -1,11 +1,3 @@
-"""Seed the database with the demo business and owner.
-
-    uv run python -m app.seed          # migrate to head, then seed (safe to re-run)
-    uv run python -m app.seed --reset  # drop everything, migrate, then seed
-
-This is a prototype, so --reset simply throws all data away.
-"""
-
 import argparse
 from pathlib import Path
 
@@ -24,7 +16,6 @@ _ALEMBIC_INI = Path(__file__).resolve().parent.parent / "alembic.ini"
 
 
 def ensure_owner(db: Session) -> AppUser:
-    """Return the demo owner, creating the business and owner if missing."""
     business = db.scalar(select(Business).where(Business.name == BUSINESS_NAME))
     if business is None:
         business = Business(

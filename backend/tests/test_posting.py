@@ -140,7 +140,7 @@ class TestReads:
         assert body["next_post"]["id"] == ids[1]
         assert len(body["upcoming"]) == 5
         assert body["latest_campaign"]["id"] == campaign["id"]
-        # The posted one counts; the other is this week unless the week ends within 5 minutes.
+        # the posted one counts for this week
         assert body["this_week"] >= 1
 
     def test_summary_empty(self, api):

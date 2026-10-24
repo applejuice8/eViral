@@ -1,8 +1,7 @@
 import { Suspense } from "react";
 import { ReviewCampaign, ReviewSkeleton } from "@/components/review/review-campaign";
 
-// The campaign id is only known at request time, so the client part that
-// reads it sits in its own Suspense boundary.
+// campaign id is known at request time, so the client part needs Suspense
 export default function ReviewPage() {
   return (
     <Suspense fallback={<ReviewSkeleton />}>

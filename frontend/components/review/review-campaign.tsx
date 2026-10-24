@@ -36,7 +36,7 @@ interface PostGroup {
   posts: Post[];
 }
 
-// Launch posts are grouped by stage; weekly/custom posts by day.
+// launch posts grouped by stage, others by day
 function groupPosts(posts: Post[]): PostGroup[] {
   const sorted = [...posts].sort(
     (a, b) =>
@@ -58,7 +58,7 @@ function groupPosts(posts: Post[]): PostGroup[] {
     }
     group.posts.push(post);
   }
-  // Posts are in time order, so launch stages already come out in order.
+  // posts are in time order, stages come out in order
   return [...groups.values()];
 }
 
@@ -84,7 +84,7 @@ export function ReviewCampaign() {
         const campaign = await api.getCampaign(campaignId);
         if (cancelled) return;
         setState({ status: "ready", campaign });
-        // Opened while the build is still running: keep checking.
+        // build still running, keep checking
         if (campaign.status === "building") timer = setTimeout(load, BUILD_POLL_MS);
       } catch (err) {
         if (cancelled) return;

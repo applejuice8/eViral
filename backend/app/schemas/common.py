@@ -5,11 +5,11 @@ from pydantic import AfterValidator
 
 
 def _as_utc(value: datetime) -> datetime:
-    # SQLite returns naive datetimes; everything we store is UTC.
+    # SQLite returns naive datetimes; stored values are UTC
     if value.tzinfo is None:
         return value.replace(tzinfo=timezone.utc)
     return value.astimezone(timezone.utc)
 
 
-# Datetime that is always sent as UTC ("...Z").
+# always serialized as UTC
 UTCDateTime = Annotated[datetime, AfterValidator(_as_utc)]

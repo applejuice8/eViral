@@ -1,14 +1,3 @@
-"""ORM models (SQLAlchemy 2.0).
-
-Status and kind columns are plain strings; the allowed values are listed
-in the constants below. Datetimes are stored in UTC. SQLite drops the
-timezone on read, so treat naive values from the db as UTC.
-
-JSON columns are not change-tracked in place: assign a new dict/list
-(e.g. `campaign.progress = {**campaign.progress, "images": {...}}`)
-instead of mutating the existing one.
-"""
-
 from datetime import datetime, timezone
 from decimal import Decimal
 
@@ -45,7 +34,6 @@ def utcnow() -> datetime:
 
 
 def empty_progress() -> dict:
-    """Starting value for campaign.progress: every step pending."""
     return {
         step: {"state": "pending", "started_at": None, "finished_at": None, "error": None}
         for step in PROGRESS_STEPS
@@ -86,7 +74,7 @@ class MediaAsset(Base):
     business_id: Mapped[int] = mapped_column(ForeignKey("business.id"), index=True)
     kind: Mapped[str] = mapped_column(String(20))  # ASSET_KINDS
     stage: Mapped[str | None] = mapped_column(String(20))  # set when kind == "stage"
-    # Path on disk (inside MEDIA_DIR) and the URL path it is served at (/media/...).
+    # file path in MEDIA_DIR + public /media URL
     path: Mapped[str] = mapped_column(String(500))
     url: Mapped[str] = mapped_column(String(500))
     mime: Mapped[str] = mapped_column(String(50))
@@ -104,9 +92,9 @@ class Product(Base):
     price_myr: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     note: Mapped[str | None] = mapped_column(String(140))
     original_asset_id: Mapped[int] = mapped_column(ForeignKey("media_asset.id"))
-    # Vision result: {product_type, visible_attributes, suggested_category, uncertain}
+    # raw vision model output
     understood: Mapped[dict | None] = mapped_column(JSON)
-    # Attributes the owner confirmed (edited chips); only these may be used in captions.
+    # owner-confirmed attributes, the only ones captions may use
     confirmed_attributes: Mapped[list | None] = mapped_column(JSON)
     understood_confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
     understood_model: Mapped[str | None] = mapped_column(String(120))
@@ -129,17 +117,14 @@ class Campaign(Base):
     # {"mode": SCHEDULE_MODES, "days": [...], "time": "HH:MM", "start_date": "YYYY-MM-DD"}
     schedule: Mapped[dict] = mapped_column(JSON)
     status: Mapped[str] = mapped_column(String(20), default="building")
-    # new_product = the wizard's photo-first flow; promotion = reuse an
-    # existing product (promote at normal price, or discount it).
+    # new_product or promotion
     campaign_type: Mapped[str] = mapped_column(String(20), default="new_product")
-    # Only set for promotions: "promote" or "discount".
+    # "promote" or "discount", promotions only
     promo_kind: Mapped[str | None] = mapped_column(String(20))
-    # What the user typed (percent off, or the discounted price); the other
-    # side is derived for display. Null unless promo_kind == "discount".
+    # what the user typed; the other side is derived
     discount_percent: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
     promo_price_myr: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
-    # Occasion for a promotion ("Raya sale", "weekend only") so captions can
-    # mention it; the product's own note stays untouched.
+    # e.g. "Raya sale", used in captions
     promo_note: Mapped[str | None] = mapped_column(String(140))
     # {step: {"state", "started_at", "finished_at", "error"}} for PROGRESS_STEPS
     progress: Mapped[dict] = mapped_column(JSON, default=empty_progress)
@@ -161,7 +146,7 @@ class Post(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     campaign_id: Mapped[int] = mapped_column(ForeignKey("campaign.id"), index=True)
     platform: Mapped[str] = mapped_column(String(20))  # PLATFORMS
-    # Launch sequence stage; null for weekly/custom schedules.
+    # launch stage, null for other schedules
     stage: Mapped[str | None] = mapped_column(String(20))
     caption: Mapped[str] = mapped_column(Text, default="")
     hashtags: Mapped[list] = mapped_column(JSON, default=list)
@@ -171,7 +156,7 @@ class Post(Base):
     scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
     status: Mapped[str] = mapped_column(String(20), default="draft", index=True)
     posted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    # Link returned by the publisher (the mock one points at our demo pages).
+    # post URL from the publisher
     published_url: Mapped[str | None] = mapped_column(String(500))
     why_this_time: Mapped[str | None] = mapped_column(String(300))
     error: Mapped[str | None] = mapped_column(Text)
@@ -185,8 +170,6 @@ class Post(Base):
 
 
 class ActivityLog(Base):
-    """Append-only. Only insert rows; never update or delete them."""
-
     __tablename__ = "activity_log"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

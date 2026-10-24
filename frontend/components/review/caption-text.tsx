@@ -13,8 +13,7 @@ function withTags(text: string) {
   );
 }
 
-// Renders a caption with hashtags styled blue. Hashtags passed separately go
-// on their own line at the bottom, the way the posts are published.
+// caption with hashtags on their own line, styled blue
 export function CaptionText({
   text,
   hashtags = [],
@@ -23,7 +22,7 @@ export function CaptionText({
 }: {
   text: string;
   hashtags?: string[];
-  /** Shown in bold before the caption, like an Instagram handle. */
+  // bold handle before the caption
   author?: string;
   className?: string;
 }) {

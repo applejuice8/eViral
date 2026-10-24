@@ -27,7 +27,6 @@ def make_client(provider: StubMediaProvider) -> TestClient:
 
 
 def make_settings(tmp_path) -> Settings:
-    """Settings pointing the media dir at a pytest tmp dir."""
     return Settings(media_dir=str(tmp_path), database_url="sqlite:///:memory:")
 
 
@@ -210,8 +209,7 @@ class TestMediaEndpoints:
         provider = StubMediaProvider()
         client = make_client(provider)
 
-        # Endpoints declaring an UploadFile always expect multipart; a
-        # request that carries only form fields still parses (image=None).
+        # form-only request still parses, image=None
         res = client.post(
             "/media/enhance",
             files={"_": ("", b"")},  # dummy part to force multipart encoding

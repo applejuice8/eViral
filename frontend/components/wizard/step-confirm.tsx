@@ -18,8 +18,7 @@ export type VisionState =
 const MAX_ATTRIBUTES = 12;
 const MAX_ATTRIBUTE_LENGTH = 60;
 
-// Step 2 — "What we see": the vision model's observations of the uploaded
-// photo as editable chips. The owner confirms before any captions are written.
+// step 2: vision observations as editable chips
 export function StepConfirm({
   photoUrl,
   vision,
@@ -30,7 +29,7 @@ export function StepConfirm({
 }: {
   photoUrl: string | null;
   vision: VisionState;
-  /** Things the model could not tell from the photo. */
+  // things the model could not tell from the photo
   uncertain: string[];
   data: ConfirmData;
   onChange: (patch: Partial<ConfirmData>) => void;

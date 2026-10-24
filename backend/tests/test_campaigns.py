@@ -27,7 +27,6 @@ NOW = datetime(2026, 10, 24, 17, 0, tzinfo=timezone.utc)  # Sun 25 Oct 01:00 MYT
 
 
 def captions_reply(payload: dict) -> dict:
-    """Stub caption model: one post per requested id."""
     return {
         "posts": [
             {
@@ -90,7 +89,6 @@ def start_campaign(api, product_id, **schedule):
 
 
 def start_promo(api, product_id, **promo):
-    """Start a promotion campaign; kwargs go straight into the JSON body."""
     return api.post(
         "/campaigns",
         json={
@@ -195,8 +193,6 @@ class TestTidyPost:
 
 
 class TestTidyPostPromo:
-    """tidy_post with a discounted campaign price (issue 31)."""
-
     def test_replaces_original_price_with_the_deal(self):
         caption, _ = tidy_post(
             "Only RM65 this week!", [], "facebook", Decimal("65"), Decimal("12")
@@ -204,8 +200,7 @@ class TestTidyPostPromo:
         assert caption == "Only was RM65, now RM12 this week!"
 
     def test_wrong_price_gets_the_real_deal_appended(self):
-        # The model invented RM60; with a discount the caption must show the
-        # real deal, so it is appended rather than rewriting "now RM60".
+        # invented RM60 stays, the real deal is appended
         caption, _ = tidy_post("Now RM60 only", [], "facebook", Decimal("65"), Decimal("12"))
         assert caption == "Now RM60 only Was RM65, now RM12."
 
@@ -297,9 +292,7 @@ class TestBuild:
         assert all("RM" not in p["caption"] for p in body["posts"])
 
     def test_images_step_notes_passthrough_skip(self, api):
-        # No media provider + passthrough: the build finishes instantly with
-        # the original photo, and the images step says why instead of just
-        # flashing "done" in ~0s.
+        # passthrough: build finishes with the original photo and says why
         product_id = add_product(api)
         campaign = start_campaign(api, product_id).json()
         body = api.get(f"/campaigns/{campaign['id']}").json()
@@ -311,8 +304,7 @@ class TestBuild:
         assert all(p["uses_original_image"] for p in body["posts"])
 
     def test_live_mode_without_key_says_so(self, api, monkeypatch):
-        # MEDIA_MODE=live but no usable provider (dependency returns None):
-        # the images step must say the key is the problem, not flash "done".
+        # live mode without a provider: the images step must say why
         settings = get_settings().model_copy(update={"media_mode": "live"})
         monkeypatch.setattr(pipeline, "get_settings", lambda: settings)
         product_id = add_product(api)
@@ -465,8 +457,6 @@ class TestPostsAndCalendar:
 
 
 class TestPromotions:
-    """Campaign types: promotion (promote / discount) — issue 31."""
-
     def test_promote_happy_path(self, api, llm):
         product_id = add_product(api)
         res = start_promo(api, product_id, promo_kind="promote")
@@ -606,8 +596,6 @@ class TestPromotions:
 
 
 class TestPromoImages:
-    """Promotion campaigns get promo-flavoured stage image prompts."""
-
     @pytest.fixture()
     def media(self) -> StubMediaProvider:
         return StubMediaProvider()
@@ -641,8 +629,6 @@ class TestPromoImages:
 
 
 class TestImageChoice:
-    """POST /campaigns/{id}/image-choice — original photo vs AI image."""
-
     def test_ai_choice_without_ai_image_conflicts(self, api, db):
         # media fixture defaults to None, so the build never made an AI image.
         product_id = add_product(api)

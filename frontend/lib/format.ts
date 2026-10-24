@@ -1,5 +1,4 @@
-// Labels and date formatting. The API sends UTC; the business is in Malaysia,
-// so every time on screen is shown in Asia/Kuala_Lumpur.
+// labels + date formatting, shown in Malaysia time
 import type { ActivityAction, Platform, PostStatus, Stage } from "@/lib/api";
 
 export const TIME_ZONE = "Asia/Kuala_Lumpur";
@@ -55,36 +54,36 @@ function parts(iso: string, options: Intl.DateTimeFormatOptions) {
   return out;
 }
 
-/** "8:00 PM" */
+// "8:00 PM"
 export function formatTime(iso: string): string {
   const p = parts(iso, { hour: "numeric", minute: "2-digit", hour12: true });
   return `${p.hour}:${p.minute} ${p.dayPeriod.toUpperCase()}`;
 }
 
-/** "25 Oct" */
+// "25 Oct"
 export function formatDay(iso: string): string {
   const p = parts(iso, { day: "numeric", month: "short" });
   return `${p.day} ${p.month}`;
 }
 
-/** "Sun 25 Oct" */
+// "Sun 25 Oct"
 export function formatWeekdayDay(iso: string): string {
   const p = parts(iso, { weekday: "short", day: "numeric", month: "short" });
   return `${p.weekday} ${p.day} ${p.month}`;
 }
 
-/** "Sun 25 Oct, 8:00 PM" */
+// "Sun 25 Oct, 8:00 PM"
 export function formatDateTime(iso: string): string {
   return `${formatWeekdayDay(iso)}, ${formatTime(iso)}`;
 }
 
-/** Malaysia calendar day of a UTC timestamp, as "yyyy-MM-dd". */
+// UTC timestamp -> "yyyy-MM-dd" in Malaysia
 export function mytDateKey(iso: string): string {
   const p = parts(iso, { year: "numeric", month: "2-digit", day: "2-digit" });
   return `${p.year}-${p.month}-${p.day}`;
 }
 
-/** Short relative time like social apps show: "just now", "5m", "3h", "2d". */
+// "just now", "5m", "3h", "2d"
 export function timeAgo(iso: string, now: number): string {
   const secs = Math.max(0, Math.round((now - new Date(iso).getTime()) / 1000));
   if (secs < 60) return "just now";
@@ -97,14 +96,14 @@ export function timeAgo(iso: string, now: number): string {
   return formatDay(iso);
 }
 
-/** Elapsed time for build steps: "8s", "1m 05s". */
+// "8s", "1m 05s"
 export function formatDuration(ms: number): string {
   const secs = Math.max(0, Math.floor(ms / 1000));
   if (secs < 60) return `${secs}s`;
   return `${Math.floor(secs / 60)}m ${String(secs % 60).padStart(2, "0")}s`;
 }
 
-/** "RM65" / "RM65.90" from the API's "65.00" string; null when no price. */
+// "65.00" -> "RM65" / "RM65.90", null when no price
 export function formatPrice(priceMyr: string | null): string | null {
   if (priceMyr == null) return null;
   const n = Number(priceMyr);
@@ -119,7 +118,7 @@ export function initials(name: string): string {
   return (words[0][0] + words[words.length - 1][0]).toUpperCase();
 }
 
-/** "KK Kopitiam" -> "kkkopitiam", like a social handle. */
+// "KK Kopitiam" -> "kkkopitiam"
 export function handleOf(businessName: string): string {
   return businessName.toLowerCase().replace(/[^a-z0-9]/g, "");
 }

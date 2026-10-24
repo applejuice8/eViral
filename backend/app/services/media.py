@@ -1,16 +1,3 @@
-"""Media service: orchestrates YouCam tasks and stores results locally.
-
-Every operation follows the same lifecycle (TECHNICAL_IMPLEMENTATION
-§8): resolve the source (upload bytes via the File API, or pass a public
-`src_file_url` straight to the task) -> submit the async task -> poll to
-success -> download the result immediately into MEDIA_DIR (result URLs
-expire in ~2 hours and YouCam deletes everything within ~24 hours).
-
-A pipeline must never fail *because* media failed, so this service raises
-MediaError for the router to map; callers can fall back to the original
-image later per BACKEND_PLAN F8.
-"""
-
 import re
 import secrets
 from pathlib import Path
@@ -19,9 +6,9 @@ from app.adapters.media import MediaError, MediaProvider, MediaTask
 from app.config import Settings, get_settings
 from app.schemas.media import MediaAssetResponse
 
-# YouCam file specs (docs.perfectcorp.com): jpg/jpeg/png, < 10MB.
+# jpg/jpeg/png, under 10MB
 MAX_IMAGE_BYTES = 10 * 1024 * 1024
-# The File API examples use "image/jpg" (not "image/jpeg").
+# YouCam says "image/jpg", not "image/jpeg"
 _SUPPORTED_TYPES: dict[str, str] = {
     "image/jpg": ("image/jpg", ".jpg"),
     "image/jpeg": ("image/jpg", ".jpg"),
@@ -32,7 +19,6 @@ _IMAGE_TO_IMAGE_SIZE_RE = re.compile(r"^(\d{3,4})\*(\d{3,4})$")
 
 
 def parse_image_to_image_size(size: str) -> str:
-    """Validate an image-to-image size string: 'W*H', each side in [512, 2048]."""
     match = _IMAGE_TO_IMAGE_SIZE_RE.match(size)
     if not match:
         raise MediaError(f"size must look like '1024*1024', got {size!r}")
@@ -43,7 +29,6 @@ def parse_image_to_image_size(size: str) -> str:
 
 
 def validate_image(data: bytes, content_type: str) -> str:
-    """Check YouCam's input rules; return the normalized extension."""
     if not data:
         raise MediaError("uploaded image is empty")
     normalized = _SUPPORTED_TYPES.get((content_type or "").lower())
@@ -65,11 +50,6 @@ def _resolve_source(
     content_type: str | None,
     image_url: str | None,
 ) -> tuple[dict, str]:
-    """Turn the caller's input into task source fields.
-
-    Exactly one of an uploaded file or a public URL must be given.
-    Returns (source fields for the task payload, "upload" | "url").
-    """
     if image is not None and image_url:
         raise MediaError("provide either an image file or image_url, not both")
     if image is None and not image_url:
@@ -84,7 +64,6 @@ def _resolve_source(
 
 
 def _sniff_ext(data: bytes) -> str:
-    """Result images are jpg or png; pick the extension from magic bytes."""
     if data[:8] == b"\x89PNG\r\n\x1a\n":
         return ".png"
     return ".jpg"
@@ -96,7 +75,6 @@ def _persist(
     settings: Settings,
     kind: str,
 ) -> tuple[str, str]:
-    """Poll the task to success, download the result, store it locally."""
     result_url = provider.wait_for_result_url(task)
     data = provider.download(result_url)
     media_dir = Path(settings.media_dir)
@@ -109,7 +87,6 @@ def _persist(
 def save_result(
     provider: MediaProvider, task: MediaTask, settings: Settings, kind: str
 ) -> tuple[str, str]:
-    """Wait for a submitted task and store its image. Returns (file name, /media URL)."""
     return _persist(provider, task, settings, kind)
 
 
@@ -178,7 +155,6 @@ def generate_poster_from_image(
     base_url: str = "http://localhost:8000",
     settings: Settings | None = None,
 ) -> MediaAssetResponse:
-    """Image-to-image: build a poster scene around the real product photo."""
     if not prompt.strip():
         raise MediaError("poster generation needs a prompt describing the scene")
     settings = settings or get_settings()
@@ -216,7 +192,6 @@ def generate_poster_from_text(
     base_url: str = "http://localhost:8000",
     settings: Settings | None = None,
 ) -> MediaAssetResponse:
-    """Text-to-image: poster from a prompt only (no product photo)."""
     if not prompt.strip():
         raise MediaError("poster generation needs a prompt")
     settings = settings or get_settings()
@@ -268,5 +243,4 @@ def change_background(
 
 
 def background_templates(provider: MediaProvider) -> dict:
-    """Predefined background templates, passed through from YouCam."""
     return provider.list_background_templates()

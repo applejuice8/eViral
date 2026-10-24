@@ -1,12 +1,3 @@
-"""Media endpoints — YouCam image operations for campaign building.
-
-Each endpoint accepts either a multipart image upload (jpg/png, <=10MB)
-or a public `image_url`, runs one YouCam task end-to-end (submit ->
-poll -> download) and returns the locally stored asset. Task results
-are downloaded immediately because YouCam's result URLs expire within
-~2 hours and uploads/results are deleted within ~24 hours.
-"""
-
 from pathlib import Path
 from typing import Annotated
 
@@ -61,7 +52,6 @@ def enhance(
     scale: Annotated[EnhanceScale, Form(description="Upscale ratio")] = EnhanceScale.X1,
     provider: MediaProvider = Depends(get_media_provider),
 ) -> MediaAssetResponse:
-    """AI Photo Enhance: fix blur/pixelation and optionally upscale."""
     try:
         data, content_type = _read_upload(image) if image else (None, None)
         return enhance_image(
@@ -95,7 +85,6 @@ def poster_from_image(
     ] = None,
     provider: MediaProvider = Depends(get_media_provider),
 ) -> MediaAssetResponse:
-    """Generate a poster from a product photo (image-to-image, keeps the product)."""
     try:
         data, content_type = _read_upload(image) if image else (None, None)
         return generate_poster_from_image(
@@ -124,7 +113,6 @@ def poster_from_text(
     size: Annotated[TextImageSize, Form()] = "1664*928",
     provider: MediaProvider = Depends(get_media_provider),
 ) -> MediaAssetResponse:
-    """Generate a poster from a text prompt only (text-to-image)."""
     try:
         return generate_poster_from_text(
             provider,
@@ -154,7 +142,6 @@ def background(
     ] = None,
     provider: MediaProvider = Depends(get_media_provider),
 ) -> MediaAssetResponse:
-    """Replace the photo's background via prompt or predefined template."""
     try:
         data, content_type = _read_upload(image) if image else (None, None)
         return change_background(
@@ -178,7 +165,6 @@ def background(
 def list_background_templates(
     provider: MediaProvider = Depends(get_media_provider),
 ) -> dict:
-    """Predefined background templates from YouCam (passthrough)."""
     try:
         return background_templates(provider)
     except MediaNotConfiguredError as exc:

@@ -25,7 +25,7 @@ import { CaptionText } from "@/components/review/caption-text";
 import { api, ApiError, mediaUrl, type Post } from "@/lib/api";
 import { formatDateTime, handleOf, platformLabel, stageLabel } from "@/lib/format";
 
-/** "#a #b" or "a, b" -> ["#a", "#b"] */
+// "#a #b" or "a, b" -> ["#a", "#b"]
 export function parseHashtags(raw: string): string[] {
   const tags = raw
     .split(/[\s,]+/)
@@ -35,8 +35,7 @@ export function parseHashtags(raw: string): string[] {
   return [...new Set(tags)];
 }
 
-// A post as it will look on the platform, with inline caption editing and
-// a "Publish now" button for scheduled posts.
+// post preview with caption editing and publish-now
 export function PostPreviewCard({
   post,
   businessName,
@@ -138,7 +137,7 @@ export function PostPreviewCard({
         <Bookmark className="ml-auto h-4.5 w-4.5" />
       </div>
 
-      {/* caption, hashtags on their own line */}
+      {/* caption + hashtags */}
       <div className="px-3.5 py-2.5">
         {editing ? (
           <div className="space-y-2">
@@ -198,7 +197,7 @@ export function PostPreviewCard({
         )}
       </div>
 
-      {/* footer: time + actions */}
+      {/* footer */}
       <div className="space-y-2 border-t border-gray-100 px-3.5 py-2.5">
         <div className="flex items-center gap-1.5 text-[11px] text-gray-500">
           <Clock className="h-3 w-3" />

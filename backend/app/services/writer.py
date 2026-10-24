@@ -1,11 +1,3 @@
-"""Caption generation via the LLM adapter.
-
-Facts discipline (TECHNICAL_IMPLEMENTATION.md §7): the model sees ONLY the
-owner-entered fields on the request. It must never invent prices, dates,
-flavours, certifications or awards; if price is absent it must not mention
-one. The campaign pipeline's checks step strips a price if none was given.
-"""
-
 from dataclasses import dataclass
 from decimal import Decimal
 
@@ -75,11 +67,6 @@ def _user_payload(request: CaptionRequest) -> dict:
 
 
 def _parse_captions(raw: dict, request: CaptionRequest) -> list[GeneratedCaption]:
-    """Validate model output; keep only requested platforms, in request order.
-
-    Tolerates model noise: entries that don't validate or name a platform we
-    didn't ask for are skipped. Every *requested* platform must be present.
-    """
     parsed: list[GeneratedCaption] = []
     if not isinstance(raw, dict):
         raise LLMError(f"Model returned non-object JSON: {raw!r}")
@@ -145,14 +132,11 @@ Respond with JSON only, exactly this shape:
 
 
 def price_text(price: Decimal) -> str:
-    """65.00 -> "65", 65.50 -> "65.50"."""
     return str(int(price)) if price == price.to_integral_value() else f"{price:.2f}"
 
 
 @dataclass
 class CaptionSlot:
-    """One post the model must write."""
-
     id: str
     platform: str
     stage: str | None
@@ -178,8 +162,7 @@ def campaign_payload(
     if campaign_type == "promotion" and promo_kind == "discount" and promo_price_myr:
         promo = {
             "kind": "discount",
-            # The original price stays in facts.price_myr; the offer needs
-            # both numbers so the captions can say "was X, now Y".
+            # keep both numbers so captions can say "was X, now Y"
             "was_price_myr": price_text(price_myr) if price_myr is not None else None,
             "now_price_myr": price_text(promo_price_myr),
             "percent_off": None if discount_percent is None else float(discount_percent),
@@ -207,7 +190,6 @@ def campaign_payload(
 def write_campaign_captions(
     payload: dict, provider: LLMProvider
 ) -> tuple[dict[str, PostCaption], str]:
-    """One LLM call for every post. Returns ({post id: caption}, model)."""
     wanted = [p["id"] for p in payload["posts"]]
 
     def parse(raw: dict) -> dict[str, PostCaption]:

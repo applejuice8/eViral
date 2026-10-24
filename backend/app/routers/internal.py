@@ -16,7 +16,6 @@ def run_tick(
     db: Session = Depends(get_db),
     publisher: Publisher = Depends(get_publisher),
 ) -> TickResponse:
-    """Post every due post now (same as the 30 second scheduler job)."""
     secret = get_settings().internal_tick_secret
     if secret and x_tick_secret != secret:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Bad tick secret")

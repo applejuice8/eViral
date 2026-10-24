@@ -32,7 +32,6 @@ router = APIRouter(tags=["campaigns"])
 
 
 def pipeline_media() -> MediaProvider | None:
-    """YouCam provider when MEDIA_MODE=live and a key is set, else None."""
     if get_settings().media_mode != "live":
         return None
     try:
@@ -132,26 +131,18 @@ _CENT = Decimal("0.01")
 
 
 def _promo_price_from_percent(price: Decimal, percent: Decimal) -> Decimal:
-    """RM15 at 20% off -> RM12.00 (half-up, like a price tag)."""
     return (price * (Decimal(100) - percent) / Decimal(100)).quantize(
         _CENT, rounding=ROUND_HALF_UP
     )
 
 
 def _percent_from_promo_price(price: Decimal, promo: Decimal) -> Decimal:
-    """RM12 off RM15 -> 20.00 (percent off)."""
     return ((Decimal(1) - promo / price) * Decimal(100)).quantize(
         _CENT, rounding=ROUND_HALF_UP
     )
 
 
 def resolve_promo(body: CampaignCreate, product: Product) -> CampaignCreate:
-    """Validate promo fields against the product and fill in both sides.
-
-    Whatever the user typed (percent or discounted price), the stored
-    campaign ends up with both, so the API can feed the UI and captions
-    without re-deriving. Raises 422 on contradictions.
-    """
     if body.campaign_type != "promotion" or body.promo_kind != "discount":
         return body
     if product.price_myr is None:
@@ -194,10 +185,6 @@ def create(
     llm: LLMProvider = Depends(get_llm_provider),
     media: MediaProvider | None = Depends(pipeline_media),
 ) -> CampaignResponse:
-    """Plan the posts and start building them in the background.
-
-    Poll GET /campaigns/{id} until status is "scheduled" (or "failed").
-    """
     product = get_product(body.product_id, db, user)
     body = resolve_promo(body, product)
     try:
@@ -212,7 +199,6 @@ def create(
 def list_campaigns(
     db: Session = Depends(get_db), user: AppUser = Depends(current_user)
 ) -> list[CampaignSummary]:
-    """All campaigns, newest first."""
     campaigns = db.scalars(
         select(Campaign)
         .where(Campaign.business_id == user.business_id)
@@ -231,12 +217,6 @@ def read(
 
 
 def _ai_base_asset(db: Session, campaign: Campaign) -> MediaAsset | None:
-    """The campaign's enhanced (AI) base image, if one was made.
-
-    Found by walking up from the posts' current images, so it stays scoped
-    to this campaign. Falls back to the newest enhanced asset built from the
-    product's original photo (e.g. all posts were switched to the original).
-    """
     original_id = campaign.product.original_asset_id
     for post in campaign.posts:
         asset = post.image_asset
@@ -267,12 +247,6 @@ def set_image_choice(
     db: Session = Depends(get_db),
     user: AppUser = Depends(current_user),
 ) -> CampaignResponse:
-    """Choose what image the campaign's posts use: original photo or AI image.
-
-    Picking the AI image re-points every post at its stage image (or the
-    enhanced base photo when no stage image exists); picking the original
-    re-points them all at the uploaded photo.
-    """
     campaign = get_campaign(campaign_id, db, user)
     product = campaign.product
     original = product.original_asset
@@ -303,8 +277,7 @@ def set_image_choice(
                 else None
             )
             asset = stage_asset or ai_base
-        # Assign the relationship (not just the FK) so the response serialises
-        # the new asset even though expire_on_commit is off.
+        # set the relationship, not just the FK, or the response is stale
         post.image_asset = asset
         post.uses_original_image = asset.id == original.id
     db.commit()
@@ -324,15 +297,11 @@ def calendar(
     db: Session = Depends(get_db),
     user: AppUser = Depends(current_user),
 ) -> list[PostResponse]:
-    """Posts scheduled between two dates (Malaysia time, both days included).
-
-    Defaults to the current month and the next one.
-    """
     start_day = from_ or today_myt(utcnow()).replace(day=1)
     end_day = to or _month_end(_month_end(start_day) + timedelta(days=1))
     if end_day < start_day:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "'to' is before 'from'")
-    # SQLite drops the offset, so compare in UTC.
+    # compare in UTC
     start = datetime.combine(start_day, time.min, tzinfo=MYT).astimezone(timezone.utc)
     end = datetime.combine(
         end_day + timedelta(days=1), time.min, tzinfo=MYT

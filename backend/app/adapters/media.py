@@ -1,27 +1,3 @@
-"""Media provider adapters.
-
-`MediaProvider` is the interface the services depend on; the live
-implementation is the YouCam (Perfect Corp) REST task API. It is a
-proprietary async-task API (Bearer auth, poll for results), NOT
-OpenAI-compatible, so it talks httpx directly instead of the OpenAI SDK.
-
-Verified against the official OpenAPI specs (docs.perfectcorp.com):
-
-* File API          POST /s2s/v2.0/file                  (upload slot + file_id)
-* Photo Enhance     POST /s2s/v2.0/task/enhance           + GET .../enhance/{task_id}
-* Image Generator   POST /s2s/v2.0/task/text-to-image/youcam
-*                   POST /s2s/v2.0/task/image-to-image/youcam
-* Background Change POST /s2s/v2.0/task/bg-replace        + GET .../bg-replace/{task_id}
-*                   GET  /s2s/v2.0/task/template/bg-replace (predefined templates)
-
-Lifecycle rules that shape this adapter:
-- Tasks are async: POST returns a task_id; poll until task_status is
-  "success" or "error" ("running" otherwise).
-- Result URLs are valid ~2 hours and uploads/results are deleted within
-  24 hours — download every result into our own storage immediately.
-- Images: jpg/jpeg/png, <= 10 MB, long side <= 4096 (per-feature specs).
-"""
-
 import time
 from dataclasses import dataclass
 from functools import lru_cache
@@ -34,14 +10,10 @@ from app.config import Settings, get_settings
 
 
 class MediaError(Exception):
-    """Media task failed or returned an unusable result."""
-
-
+    pass
 class MediaNotConfiguredError(Exception):
-    """No API key configured for the provider."""
-
-
-# Recommended quality guardrail; sent when callers omit a negative prompt.
+    pass
+# default negative prompt
 DEFAULT_NEGATIVE_PROMPT = (
     "low resolution, low quality, blurry, distorted product, deformed shape, "
     "malformed text, watermark, oversaturated colors, artificial look"
@@ -50,22 +22,16 @@ DEFAULT_NEGATIVE_PROMPT = (
 
 @dataclass(frozen=True)
 class MediaTask:
-    """A submitted async task: its id plus the feature path used to poll it."""
-
     task_id: str
-    poll_path: str  # template containing "{task_id}", e.g. "/s2s/v2.0/task/enhance/{task_id}"
+    poll_path: str  # e.g. "/s2s/v2.0/task/enhance/{task_id}"
 
 
 class MediaProvider(Protocol):
-    """Interface the media service depends on (YouCam today, cache later)."""
-
     @property
     def name(self) -> str:
-        """Identifier of the provider (for responses and logs)."""
         ...
 
     def upload_image(self, data: bytes, file_name: str, content_type: str) -> str:
-        """Upload image bytes; return a file_id usable as a task source."""
         ...
 
     def submit_enhance(
@@ -75,7 +41,6 @@ class MediaProvider(Protocol):
         src_file_url: str | None = None,
         scale: int = 1,
     ) -> MediaTask:
-        """AI Photo Enhance: fix blur/pixelation, upscale (scale 1|2|4)."""
         ...
 
     def submit_poster_from_image(
@@ -88,7 +53,6 @@ class MediaProvider(Protocol):
         size: str | None = None,
         prompt_extend: bool = True,
     ) -> MediaTask:
-        """Image-to-image: generate a poster/scene around the real product."""
         ...
 
     def submit_poster_from_text(
@@ -99,7 +63,6 @@ class MediaProvider(Protocol):
         size: str | None = None,
         prompt_extend: bool = True,
     ) -> MediaTask:
-        """Text-to-image: generate a poster from a prompt only."""
         ...
 
     def submit_background_change(
@@ -110,39 +73,27 @@ class MediaProvider(Protocol):
         prompt: str | None = None,
         template_id: str | None = None,
     ) -> MediaTask:
-        """Replace the background via prompt or a predefined template."""
         ...
 
     def list_background_templates(self) -> dict:
-        """Predefined background templates (id + label)."""
         ...
 
     def wait_for_result_url(self, task: MediaTask) -> str:
-        """Poll until success; return the (short-lived) result URL."""
         ...
 
     def download(self, url: str) -> bytes:
-        """Fetch a result URL's bytes (presigned; no provider auth needed)."""
         ...
 
 
 def _src_payload(
     src_file_id: str | None, src_file_url: str | None
 ) -> dict:
-    """BasicRunTaskV2: exactly one of src_file_id / src_file_url."""
     if bool(src_file_id) == bool(src_file_url):
         raise MediaError("provide exactly one of src_file_id / src_file_url")
     return {"src_file_id": src_file_id} if src_file_id else {"src_file_url": src_file_url}
 
 
 class YouCamProvider:
-    """Perfect Corp YouCam API client.
-
-    One httpx client holds the Bearer auth; task polling runs inline with
-    the configured interval/timeout. Every caller must download results
-    promptly (URLs expire) — the media service does this.
-    """
-
     def __init__(self, settings: Settings):
         if not settings.youcam_api_key:
             raise MediaNotConfiguredError("YOUCAM_API_KEY is not set")
@@ -180,7 +131,7 @@ class YouCamProvider:
 
     def _submit_task(self, path: str, payload: dict) -> MediaTask:
         body = self._request("POST", path, json=payload).json()
-        # All task endpoints share the {status, data: {task_id}} envelope.
+        # all task endpoints use the {status, data} envelope
         task_id = (body.get("data") or {}).get("task_id")
         if not task_id:
             raise MediaError(f"YouCam {path} returned no task_id: {body!r}")
@@ -189,11 +140,6 @@ class YouCamProvider:
     # -- File API ------------------------------------------------------------
 
     def upload_image(self, data: bytes, file_name: str, content_type: str) -> str:
-        """Register the file, PUT the bytes to the presigned slot, return file_id.
-
-        The File API wraps its payload inconsistently across doc versions
-        ("files" at the top level or under "data"); accept both shapes.
-        """
         payload = {
             "files": [
                 {
@@ -297,7 +243,7 @@ class YouCamProvider:
     ) -> MediaTask:
         payload = _src_payload(src_file_id, src_file_url)
         if template_id:
-            # With a template the prompt is ignored by the API.
+            # template mode ignores the prompt
             payload |= {"type": "template", "template_id": template_id}
         else:
             if not prompt:
@@ -311,7 +257,6 @@ class YouCamProvider:
     # -- polling + download -------------------------------------------------
 
     def wait_for_result_url(self, task: MediaTask) -> str:
-        """Poll until success/error/timeout; return the ~2h result URL."""
         path = task.poll_path.format(task_id=quote(task.task_id, safe=""))
         settings = self._settings
         deadline = time.monotonic() + settings.youcam_timeout_seconds
@@ -338,7 +283,6 @@ class YouCamProvider:
             time.sleep(settings.youcam_poll_interval_seconds)
 
     def download(self, url: str) -> bytes:
-        """Result URLs are presigned — plain GET, no provider auth header."""
         try:
             response = httpx.get(url, timeout=120.0)
         except httpx.HTTPError as exc:
@@ -352,5 +296,4 @@ class YouCamProvider:
 
 @lru_cache
 def get_media_provider() -> MediaProvider:
-    """FastAPI dependency; override with app.dependency_overrides in tests."""
     return YouCamProvider(get_settings())

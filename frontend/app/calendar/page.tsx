@@ -36,10 +36,7 @@ const LEGEND: [PostStatus, string][] = [
   ["failed", "Failed"],
 ];
 
-/**
- * When to show a post: when it went out if it was posted inside the visible
- * range (e.g. published early with "Publish now"), else when it was planned.
- */
+// show posted_at when in range, else the planned time
 function postTime(p: Post, from: string, to: string): string | null {
   if (p.status === "posted" && p.posted_at) {
     const day = mytDateKey(p.posted_at);
@@ -50,11 +47,11 @@ function postTime(p: Post, from: string, to: string): string | null {
 
 export default function CalendarPage() {
   const [view, setView] = React.useState<"week" | "month">("week");
-  // Current time is only available on the client (cacheComponents prerender).
+  // current time is client-only
   const [cursor, setCursor] = React.useState<Date | null>(null);
   React.useEffect(() => setCursor(new Date()), []);
   const [selectedId, setSelectedId] = React.useState<number | null>(null);
-  // Posts are cached per visible range so switching back is instant.
+  // cache posts per visible range
   const [loaded, setLoaded] = React.useState<{ key: string; posts: Post[]; error: string | null } | null>(null);
   const [publishing, setPublishing] = React.useState(false);
   const [actionError, setActionError] = React.useState<string | null>(null);

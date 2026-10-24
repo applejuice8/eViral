@@ -22,7 +22,6 @@ def activity(
     db: Session = Depends(get_db),
     user: AppUser = Depends(current_user),
 ) -> list[ActivityResponse]:
-    """Activity log, newest first."""
     query = select(ActivityLog).where(
         ActivityLog.business_id == user.business_id,
         ActivityLog.action.in_(ACTIVITY_ACTIONS),
@@ -40,7 +39,7 @@ def summary(
     now = utcnow()
     today = today_myt(now)
     week_start_day = today - timedelta(days=today.weekday())
-    # SQLite drops the offset, so compare in UTC.
+    # compare in UTC
     week_start = datetime.combine(week_start_day, time.min, tzinfo=MYT).astimezone(timezone.utc)
     week_end = week_start + timedelta(days=7)
 

@@ -1,5 +1,3 @@
-"""Activity log writes. The log is append-only."""
-
 from sqlalchemy.orm import Session
 
 from app.models import ACTIVITY_ACTIONS, ActivityLog
@@ -16,7 +14,6 @@ def log_activity(
     business_id: int | None = None,
     detail: dict | None = None,
 ) -> ActivityLog:
-    """Add an activity row to the session. The caller commits."""
     if action not in ACTIVITY_ACTIONS:
         raise ValueError(f"Unknown activity action: {action}")
     entry = ActivityLog(

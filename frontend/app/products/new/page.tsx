@@ -100,12 +100,11 @@ export default function NewProductPage() {
     photo: null,
     photoUrl: null,
   });
-  // The product saved on the backend, and the input it was saved from.
-  // Going back and changing anything creates a fresh product.
+  // saved product + the input it was saved from
   const [product, setProduct] = React.useState<Product | null>(null);
   const savedFrom = React.useRef<Saved | null>(null);
 
-  // Promotion flow: existing products to pick from, the pick, and the promo.
+  // promotion flow state
   const [products, setProducts] = React.useState<Product[] | null>(null);
   const [picked, setPicked] = React.useState<Product | null>(null);
   const [promo, setPromo] = React.useState<PromoData>(EMPTY_PROMO);
@@ -122,7 +121,7 @@ export default function NewProductPage() {
   });
   const [campaignId, setCampaignId] = React.useState<number | null>(null);
 
-  // Products for the promotion picker (fetched once; harmless if unused).
+  // products for the promotion picker
   React.useEffect(() => {
     let cancelled = false;
     api
@@ -134,7 +133,7 @@ export default function NewProductPage() {
     };
   }, []);
 
-  // Free the preview object URL when leaving the wizard.
+  // free the preview URL on unmount
   const photoUrlRef = React.useRef<string | null>(null);
   React.useEffect(() => {
     photoUrlRef.current = tellUs.photoUrl;
@@ -146,7 +145,7 @@ export default function NewProductPage() {
     []
   );
 
-  // Ignore late answers for a product the owner has since replaced.
+  // ignore late answers for a replaced product
   const activeProductId = React.useRef<number | null>(null);
 
   function chooseType(type: CampaignType) {
@@ -359,8 +358,7 @@ export default function NewProductPage() {
         </p>
       )}
 
-      {/* Footer — Back always works: step 0 leaves to the dashboard,
-          later steps go back one step (including during the build). */}
+      {/* footer */}
       <div className="flex items-center justify-between border-t border-gray-200 pt-4">
         <Button
           variant="outline"

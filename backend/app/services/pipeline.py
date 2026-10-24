@@ -1,13 +1,3 @@
-"""Campaign build pipeline.
-
-Steps, tracked in campaign.progress so the build screen can poll real
-progress: understand (vision, cached) -> images (YouCam, optional) ->
-captions (one LLM call) -> checks (light tidy up, never blocks).
-
-Media problems never fail a campaign: posts fall back to the original photo.
-Any other error marks the step and the campaign as failed.
-"""
-
 import logging
 import re
 from datetime import datetime, timezone
@@ -50,9 +40,7 @@ STAGE_SCENES = {
     "reminder": "lifestyle shot on a home dining table with plates and a cup of tea, natural daylight",
     "last_chance": "warm festive scene with soft fairy lights and wrapped gift boxes around it",
 }
-# Extra art direction for promotion campaigns: the same product, but the
-# scene should feel like a promo. The negative prompt already bans text,
-# so tags stay blank — the owner can write the price on them if they want.
+# promo scene extras; text is banned by the negative prompt so tags stay blank
 PROMO_SCENE_PROMOTE = (
     " Give it a festive promotional feel with colourful celebratory props "
     "around it, like ribbons and confetti, without any text, signs or logos."
@@ -69,7 +57,7 @@ HASHTAG_LIMITS = {"facebook": 5, "instagram": 10, "tiktok": 5}
 
 
 def as_utc(value: datetime) -> datetime:
-    # SQLite gives back naive datetimes; we store UTC.
+    # SQLite returns naive datetimes; stored values are UTC
     return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
 
 
@@ -83,7 +71,6 @@ def _stamp() -> str:
 def create_campaign(
     db: Session, user: AppUser, product: Product, body: CampaignCreate
 ) -> Campaign:
-    """Save the campaign and its planned posts (status draft)."""
     now = utcnow()
     planned = plan_posts(body.schedule, body.platforms, now)
     campaign = Campaign(
@@ -140,7 +127,6 @@ def create_campaign(
 def run_build(
     campaign_id: int, llm: LLMProvider, media: MediaProvider | None
 ) -> None:
-    """Background task entry point; uses its own db session."""
     with SessionLocal() as db:
         build_campaign(db, campaign_id, llm, media, get_settings())
 
@@ -163,15 +149,13 @@ def build_campaign(
         step = "images"
         _set_step(db, campaign, step, "running")
         note = _make_images(db, campaign, media, settings)
-        # A note (in the error field) on a "done" step means images were
-        # skipped or fell back — the build screen shows it as the reason.
+        # a note in error on a done step = images skipped/fell back
         _set_step(db, campaign, step, "done", error=note)
 
         step = "captions"
         _set_step(db, campaign, step, "running")
         _write_captions(db, campaign, llm)
-        # Final tidy-up (hashtags, fallbacks, post status) runs as part of the
-        # captions step — it is no longer a visible progress step of its own.
+        # final tidy-up runs as part of the captions step
         _check_posts(campaign)
         campaign.status = "scheduled"
         _set_step(db, campaign, step, "done")
@@ -207,7 +191,7 @@ def _set_step(
 
 
 def _upload_type(asset: MediaAsset) -> str:
-    # The YouCam File API wants "image/jpg" rather than "image/jpeg".
+    # YouCam wants "image/jpg", not "image/jpeg"
     return "image/png" if asset.mime == "image/png" else "image/jpg"
 
 
@@ -233,12 +217,6 @@ def _save_asset(
 def _make_images(
     db: Session, campaign: Campaign, media: MediaProvider | None, settings: Settings
 ) -> str | None:
-    """Enhance the original photo and build the stage images.
-
-    Returns a note for progress.images.error explaining why posts fell back
-    to the original photo (None when real AI images were made). Media
-    problems never fail the campaign — they only leave a visible reason.
-    """
     product = campaign.product
     original = product.original_asset
     base = original
@@ -313,11 +291,6 @@ def _make_stage_images(
     stages: list[str],
     settings: Settings,
 ) -> dict[str, MediaAsset]:
-    """Image-to-image from the enhanced photo, one per stage.
-
-    The photo is uploaded once and all tasks are submitted before polling,
-    so they run on YouCam's side at the same time.
-    """
     understood = campaign.product.understood or {}
     thing = understood.get("product_type") or campaign.product.name
     if campaign.campaign_type == "promotion":
@@ -435,22 +408,10 @@ def clean_hashtags(tags: list[str], limit: int) -> list[str]:
 
 
 def _price_token(amount: str) -> re.Pattern:
-    """Regex for an exact RM amount: RM15 / RM 15 / RM15.00, not RM150.
-
-    The lookahead blocks thousands groupings too ("RM65,000" is not RM65).
-    """
     return re.compile(rf"\bRM\s?{re.escape(amount)}(?!\d|,\d)", re.IGNORECASE)
 
 
 def _apply_promo_price(text: str, price: Decimal, promo_price: Decimal) -> str:
-    """Keep the price honest when the product is discounted.
-
-    The caption must show the deal ("was RM15, now RM12"). If the model
-    already wrote both prices, leave it alone; if it wrote only one of
-    them, turn the first occurrence into the deal; if it wrote neither,
-    append the deal. Stray other prices are left untouched — rewriting
-    them could lie about the offer.
-    """
     if not text:
         return text
     was_amt, now_amt = price_text(price), price_text(promo_price)
@@ -474,7 +435,6 @@ def tidy_post(
     price: Decimal | None,
     promo_price: Decimal | None = None,
 ) -> tuple[str, list[str]]:
-    """Move stray hashtags out of the text and keep the price honest."""
     text = caption.strip()
     trailing = _TRAILING_TAGS_RE.search(text)
     if trailing:

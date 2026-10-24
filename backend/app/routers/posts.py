@@ -28,10 +28,6 @@ def list_posts(
     db: Session = Depends(get_db),
     user: AppUser = Depends(current_user),
 ) -> list[FeedPostResponse]:
-    """Posts for the social demo pages.
-
-    Posted posts come newest first; anything else by scheduled time.
-    """
     query = select(Post).join(Campaign).where(Campaign.business_id == user.business_id)
     if status_:
         query = query.where(Post.status == status_)
@@ -62,7 +58,6 @@ def update(
     db: Session = Depends(get_db),
     user: AppUser = Depends(current_user),
 ) -> PostResponse:
-    """Edit a post's caption, hashtags or time. Posted posts can't change."""
     post = get_post(post_id, db, user)
     if post.status == "posted":
         raise HTTPException(status.HTTP_409_CONFLICT, "Post is already posted")
@@ -86,7 +81,6 @@ def publish_now(
     user: AppUser = Depends(current_user),
     publisher: Publisher = Depends(get_publisher),
 ) -> PostResponse:
-    """Post a scheduled post right away (demo button)."""
     post = get_post(post_id, db, user)
     if post.status != "scheduled":
         raise HTTPException(

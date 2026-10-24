@@ -8,18 +8,17 @@ import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
 import { mediaUrl, type Product, type PromoKind } from "@/lib/api";
 
-// Step 1 of the promotion flow — pick an existing product and, optionally,
-// set a discount. No photo upload, no vision step: the product is reusable.
+// promotion flow: pick a product, optional discount
 
 export type PromoMode = "percent" | "price";
 
 export interface PromoData {
   kind: PromoKind;
-  /** Which side the user is typing: percent off, or the discounted price. */
+  // "percent" or "price"
   mode: PromoMode;
-  /** Raw input for the active mode ("20", "12.50"). */
+  // raw input for the active mode
   value: string;
-  /** Occasion for the captions ("Raya sale", "weekend only"). */
+  // occasion for the captions
   note: string;
 }
 
@@ -35,7 +34,7 @@ export function promoPriceFrom(price: number, percent: number): number {
   return Math.round(price * (1 - percent / 100) * 100) / 100;
 }
 
-/** Validation message for the discount input, or null when it is fine. */
+// validation message, null when fine
 export function promoError(promo: PromoData, product: Product | null): string | null {
   if (promo.kind !== "discount") return null;
   if (!product) return null;
@@ -57,7 +56,7 @@ export function promoError(promo: PromoData, product: Product | null): string | 
   return null;
 }
 
-/** Both sides of the deal for the API: the typed one plus the derived one. */
+// typed value plus the derived one
 export function promoPayload(
   promo: PromoData,
   product: Product
@@ -86,7 +85,7 @@ export function promoPayload(
   };
 }
 
-/** "Nasi Lemak — RM15.00 → RM12.00 (20% off)" preview line, or null. */
+// preview line, or null
 export function promoPreview(promo: PromoData, product: Product | null): string | null {
   if (promo.kind !== "discount" || !product?.price_myr) return null;
   const original = Number(product.price_myr);
@@ -304,7 +303,7 @@ export function StepPromotion({
   );
 }
 
-/** The live-computed other side of the deal, next to the input. */
+// live-computed other side
 function PromoCounterpart({ promo, product }: { promo: PromoData; product: Product }) {
   const original = product.price_myr == null ? null : Number(product.price_myr);
   const value = Number(promo.value);

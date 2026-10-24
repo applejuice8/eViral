@@ -20,12 +20,6 @@ class ActivityResponse(BaseModel):
 
 
 class SummaryResponse(BaseModel):
-    """Numbers and lists for the dashboard.
-
-    `this_week` counts posts scheduled or posted in the current Malaysia
-    week (Monday to Sunday).
-    """
-
     business_name: str
     owner_name: str
     scheduled: int

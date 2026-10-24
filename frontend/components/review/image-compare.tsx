@@ -9,9 +9,7 @@ import { cn } from "@/lib/utils";
 
 export type ImageChoice = "original" | "ai";
 
-// Original vs AI-improved, side by side. When `onChoose` is given and an
-// AI image exists, the owner picks which one the posts use; otherwise
-// this is display-only and the original is always shown.
+// original vs AI image; selectable when onChoose is given
 export function ImageCompare({
   original,
   improved,
@@ -23,7 +21,7 @@ export function ImageCompare({
   original: string;
   improved: string | null;
   productName: string;
-  /** Which image the posts currently use (only read when selectable). */
+  // image the posts currently use
   choice?: ImageChoice;
   onChoose?: (choice: ImageChoice) => void;
   pending?: boolean;
