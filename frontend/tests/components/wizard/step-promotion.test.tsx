@@ -66,6 +66,15 @@ describe("StepPromotion", () => {
     expect(onPick).toHaveBeenCalledWith(product);
   });
 
+  it("renders product photos through the /backend proxy path", () => {
+    setup();
+    // The API returns "/media/..."; the browser needs the /backend prefix.
+    expect(screen.getByAltText("Nasi Lemak Ayam Goreng")).toHaveAttribute(
+      "src",
+      "/backend/media/p.jpg"
+    );
+  });
+
   it("filters products by name", () => {
     setup([product, noPriceProduct]);
     fireEvent.change(screen.getByLabelText(/which product/i), {

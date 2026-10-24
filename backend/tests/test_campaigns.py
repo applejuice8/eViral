@@ -605,6 +605,41 @@ class TestPromotions:
         assert res.json()["promo_kind"] is None
 
 
+class TestPromoImages:
+    """Promotion campaigns get promo-flavoured stage image prompts."""
+
+    @pytest.fixture()
+    def media(self) -> StubMediaProvider:
+        return StubMediaProvider()
+
+    @staticmethod
+    def poster_prompts(media: StubMediaProvider) -> list[str]:
+        return [s["prompt"] for s in media.submissions if s["kind"] == "poster-image"]
+
+    def test_promotion_posters_get_promo_context(self, api, media):
+        product_id = add_product(api)
+        start_promo(api, product_id, promo_kind="discount", discount_percent="20")
+        prompts = self.poster_prompts(media)
+        assert prompts
+        assert all("promotional" in p for p in prompts)
+        assert all("price tag" in p for p in prompts)
+
+    def test_promote_only_posters_get_festive_context(self, api, media):
+        product_id = add_product(api)
+        start_promo(api, product_id, promo_kind="promote")
+        prompts = self.poster_prompts(media)
+        assert prompts
+        assert all("promotional" in p for p in prompts)
+        assert all("price tag" not in p for p in prompts)
+
+    def test_new_product_posters_stay_plain(self, api, media):
+        product_id = add_product(api)
+        start_campaign(api, product_id)
+        prompts = self.poster_prompts(media)
+        assert prompts
+        assert all("promotional" not in p for p in prompts)
+
+
 class TestImageChoice:
     """POST /campaigns/{id}/image-choice — original photo vs AI image."""
 

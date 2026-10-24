@@ -50,6 +50,18 @@ STAGE_SCENES = {
     "reminder": "lifestyle shot on a home dining table with plates and a cup of tea, natural daylight",
     "last_chance": "warm festive scene with soft fairy lights and wrapped gift boxes around it",
 }
+# Extra art direction for promotion campaigns: the same product, but the
+# scene should feel like a promo. The negative prompt already bans text,
+# so tags stay blank — the owner can write the price on them if they want.
+PROMO_SCENE_PROMOTE = (
+    " Give it a festive promotional feel with colourful celebratory props "
+    "around it, like ribbons and confetti, without any text, signs or logos."
+)
+PROMO_SCENE_DISCOUNT = (
+    " Give it a sale-day promotional feel with colourful celebratory props "
+    "around it and a small blank paper price tag tied to it with string, "
+    "without any text, signs or logos."
+)
 STAGE_NEGATIVE_PROMPT = DEFAULT_NEGATIVE_PROMPT + ", text, letters, logo, different product"
 STAGE_IMAGE_SIZE = "1024*1024"
 
@@ -308,6 +320,14 @@ def _make_stage_images(
     """
     understood = campaign.product.understood or {}
     thing = understood.get("product_type") or campaign.product.name
+    if campaign.campaign_type == "promotion":
+        promo_scene = (
+            PROMO_SCENE_DISCOUNT
+            if campaign.promo_kind == "discount"
+            else PROMO_SCENE_PROMOTE
+        )
+    else:
+        promo_scene = ""
     try:
         logger.info("YouCam: upload enhanced photo (campaign %s)", campaign.id)
         file_id = media.upload_image(
@@ -321,7 +341,7 @@ def _make_stage_images(
     for stage in stages:
         prompt = (
             f"The same {thing} from the photo, with its shape, colours and details "
-            f"unchanged, in a {STAGE_SCENES[stage]}. Realistic food photo."
+            f"unchanged, in a {STAGE_SCENES[stage]}.{promo_scene} Realistic food photo."
         )
         try:
             logger.info("YouCam: image-to-image %s (campaign %s)", stage, campaign.id)

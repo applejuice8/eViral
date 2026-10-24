@@ -6,7 +6,7 @@ import { Check, Search } from "lucide-react";
 import { Input, Label } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
-import type { Product, PromoKind } from "@/lib/api";
+import { mediaUrl, type Product, type PromoKind } from "@/lib/api";
 
 // Step 1 of the promotion flow — pick an existing product and, optionally,
 // set a discount. No photo upload, no vision step: the product is reusable.
@@ -175,7 +175,7 @@ export function StepPromotion({
                 <div className="relative aspect-[4/3] bg-gray-100">
                   {p.photo_url && (
                     <Image
-                      src={p.photo_url}
+                      src={mediaUrl(p.photo_url) ?? ""}
                       alt={p.name}
                       fill
                       unoptimized
