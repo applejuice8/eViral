@@ -1,9 +1,3 @@
-"""Post planner: turns the wizard's schedule into post times.
-
-Plain rules, no AI. Times are picked in Malaysia time (UTC+8, no daylight
-saving) and returned in UTC.
-"""
-
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
 
@@ -12,7 +6,7 @@ from app.schemas.campaigns import MAX_POSTS_PER_CAMPAIGN, ScheduleIn
 MYT = timezone(timedelta(hours=8), "MYT")
 WEEKDAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 
-# Launch sequence: day offset from the start date for each stage.
+# day offset from the start date per stage
 LAUNCH_OFFSETS = {"teaser": 0, "launch": 2, "reminder": 5, "last_chance": 7}
 
 _STAGE_REASONS = {
@@ -24,9 +18,7 @@ _STAGE_REASONS = {
 
 
 class PlanError(ValueError):
-    """The schedule can't be turned into posts (maps to 422)."""
-
-
+    pass
 @dataclass
 class PlannedPost:
     platform: str
@@ -65,7 +57,6 @@ def _label(at: time) -> str:
 def plan_posts(
     schedule: ScheduleIn, platforms: list[str], now: datetime
 ) -> list[PlannedPost]:
-    """One post per platform per slot, sorted by time."""
     at = _parse_time(schedule.time)
     start = schedule.start_date or today_myt(now) + timedelta(days=1)
 
@@ -111,7 +102,6 @@ def plan_posts(
 
 
 def describe_schedule(schedule: ScheduleIn, now: datetime) -> dict:
-    """The schedule as stored on the campaign (start date filled in)."""
     start = schedule.start_date or today_myt(now) + timedelta(days=1)
     data = {"mode": schedule.mode, "time": schedule.time, "timezone": "Asia/Kuala_Lumpur"}
     if schedule.mode in ("launch_sequence", "weekly"):

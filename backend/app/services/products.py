@@ -1,5 +1,3 @@
-"""Product services: saving uploads and understanding the photo."""
-
 import base64
 import secrets
 from decimal import Decimal, InvalidOperation
@@ -24,11 +22,8 @@ _IMAGE_TYPES = {
 
 
 class ProductInputError(ValueError):
-    """Owner input that we can't accept (maps to 422)."""
-
-
+    pass
 def parse_price(raw: str | None) -> Decimal | None:
-    """Empty means no price. Otherwise a number >= 0 with at most 2 decimals."""
     if raw is None or not raw.strip():
         return None
     try:
@@ -45,7 +40,6 @@ def parse_price(raw: str | None) -> Decimal | None:
 
 
 def check_photo(data: bytes, content_type: str | None) -> tuple[str, str]:
-    """Return (mime, extension) for a jpg/png photo up to 10MB."""
     if not data:
         raise ProductInputError("photo is empty")
     if len(data) > MAX_IMAGE_BYTES:
@@ -55,7 +49,7 @@ def check_photo(data: bytes, content_type: str | None) -> tuple[str, str]:
     is_jpg = data[:3] == b"\xff\xd8\xff"
     if known is None or not (is_png or is_jpg):
         raise ProductInputError("photo must be a JPG or PNG image")
-    # Trust the file contents over the declared type.
+    # trust file contents over the declared type
     return ("image/png", ".png") if is_png else ("image/jpeg", ".jpg")
 
 
@@ -126,7 +120,6 @@ Respond with JSON only, exactly this shape:
 def understand_product(
     db: Session, product: Product, provider: LLMProvider
 ) -> Product:
-    """Run the vision model on the product photo and store the result."""
     asset = product.original_asset
     data = Path(asset.path).read_bytes()
     data_url = f"data:{asset.mime};base64,{base64.b64encode(data).decode()}"

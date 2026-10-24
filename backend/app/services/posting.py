@@ -1,5 +1,3 @@
-"""Posting due posts (scheduler tick) and posting one post right away."""
-
 import logging
 from datetime import datetime
 
@@ -24,7 +22,6 @@ STAGE_LABELS = {
 
 
 def publish_post(db: Session, post: Post, publisher: Publisher, now: datetime) -> Post:
-    """Post it, log it, and close the campaign when every post is out. Caller commits."""
     post.published_url = publisher.publish(post)
     post.status = "posted"
     post.posted_at = now
@@ -51,7 +48,6 @@ def publish_post(db: Session, post: Post, publisher: Publisher, now: datetime) -
 
 
 def tick(db: Session, publisher: Publisher, now: datetime | None = None) -> int:
-    """Post every scheduled post that is due. Returns how many were posted."""
     now = now or utcnow()
     due = db.scalars(
         select(Post)
@@ -66,7 +62,6 @@ def tick(db: Session, publisher: Publisher, now: datetime | None = None) -> int:
 
 
 def run_tick() -> None:
-    """Scheduler job; uses its own db session."""
     try:
         with SessionLocal() as db:
             count = tick(db, MockPublisher())
