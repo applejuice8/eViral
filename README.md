@@ -67,4 +67,4 @@ Tests never call OpenRouter or YouCam; they use fake responses.
 
 - One vision call per product, saved and reused.
 - One caption call per campaign covers every platform and stage.
-- Image editing only runs on Build and only when `MEDIA_MODE=live`. If YouCam fails, posts fall back to the original photo and the build still finishes.
+- Image editing only runs on Build and only when `MEDIA_MODE=live`. If YouCam fails, posts fall back to the original photo and the build still finishes. The build screen's images step and the review screen say why (`MEDIA_MODE=passthrough`, a missing `YOUCAM_API_KEY`, or the YouCam error itself) instead of finishing silently.

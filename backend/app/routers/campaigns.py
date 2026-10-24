@@ -1,3 +1,4 @@
+import logging
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Annotated
 
@@ -23,6 +24,8 @@ from app.schemas.campaigns import (
 from app.services.pipeline import create_campaign, run_build
 from app.services.planner import MYT, PlanError, today_myt
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(tags=["campaigns"])
 
 
@@ -33,6 +36,11 @@ def pipeline_media() -> MediaProvider | None:
     try:
         return get_media_provider()
     except MediaNotConfiguredError:
+        logger.warning(
+            "MEDIA_MODE is 'live' but YOUCAM_API_KEY is not set — campaigns "
+            "will be built with the original photo. Set the key or switch "
+            "MEDIA_MODE back to 'passthrough' to silence this."
+        )
         return None
 
 

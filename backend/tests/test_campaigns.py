@@ -7,10 +7,12 @@ from sqlalchemy import select
 
 from app.adapters.llm import get_llm_provider
 from app.adapters.media import MediaError
+from app.config import get_settings
 from app.main import create_app
 from app.models import ActivityLog, MediaAsset, Post
 from app.routers.campaigns import pipeline_media
 from app.schemas.campaigns import ScheduleIn
+from app.services import pipeline
 from app.services.pipeline import tidy_post
 from app.services.planner import PlanError, plan_posts
 from tests.stubs import (
@@ -191,7 +193,10 @@ class TestBuild:
         for step in body["progress"].values():
             assert step["state"] == "done"
             assert step["started_at"].endswith("Z") and step["finished_at"]
-            assert step["error"] is None
+        # passthrough leaves a visible note on the images step only.
+        assert body["progress"]["understand"]["error"] is None
+        assert body["progress"]["captions"]["error"] is None
+        assert "original photo" in body["progress"]["images"]["error"]
         assert body["product"]["understood"]["product_type"] == "layered cake"
 
         post = body["posts"][0]
@@ -231,6 +236,33 @@ class TestBuild:
         campaign = start_campaign(api, product_id).json()
         body = api.get(f"/campaigns/{campaign['id']}").json()
         assert all("RM" not in p["caption"] for p in body["posts"])
+
+    def test_images_step_notes_passthrough_skip(self, api):
+        # No media provider + passthrough: the build finishes instantly with
+        # the original photo, and the images step says why instead of just
+        # flashing "done" in ~0s.
+        product_id = add_product(api)
+        campaign = start_campaign(api, product_id).json()
+        body = api.get(f"/campaigns/{campaign['id']}").json()
+
+        assert body["status"] == "scheduled"
+        images = body["progress"]["images"]
+        assert images["state"] == "done"
+        assert "original photo" in images["error"]
+        assert all(p["uses_original_image"] for p in body["posts"])
+
+    def test_live_mode_without_key_says_so(self, api, monkeypatch):
+        # MEDIA_MODE=live but no usable provider (dependency returns None):
+        # the images step must say the key is the problem, not flash "done".
+        settings = get_settings().model_copy(update={"media_mode": "live"})
+        monkeypatch.setattr(pipeline, "get_settings", lambda: settings)
+        product_id = add_product(api)
+        campaign = start_campaign(api, product_id).json()
+        body = api.get(f"/campaigns/{campaign['id']}").json()
+
+        assert body["status"] == "scheduled"
+        assert body["progress"]["images"]["state"] == "done"
+        assert "API key is missing or invalid" in body["progress"]["images"]["error"]
 
     def test_list_campaigns(self, api):
         product_id = add_product(api)
@@ -309,6 +341,7 @@ class TestLiveMedia:
 
         assert body["status"] == "scheduled"
         assert body["progress"]["images"]["state"] == "done"
+        assert "YouCam down" in body["progress"]["images"]["error"]
         assert all(p["uses_original_image"] for p in body["posts"])
         assert all(p["image_url"] == body["product"]["photo_url"] for p in body["posts"])
 
