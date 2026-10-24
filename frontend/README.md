@@ -33,7 +33,7 @@ pnpm test
 
 ## Conventions
 
-- **Single-user demo:** the app runs as one Owner (Aisha, Kek Kak Nora, from `/summary`). No login. Posts go out on schedule without an approval step.
+- **Single-user demo:** the app runs as one Owner (Aisha, KK Kopitiam, from `/summary`). No login. Posts go out on schedule without an approval step.
 - **Post statuses:** draft → scheduled → posted (or failed). Colors: blue = scheduled · green = posted · red = failed · grey = draft.
 - All times come from the API in UTC and are shown in Asia/Kuala_Lumpur (`lib/format.ts`).
 - Captions are shown with hashtags on their own line at the bottom, in blue.

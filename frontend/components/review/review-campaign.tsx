@@ -67,7 +67,7 @@ export function ReviewCampaign() {
   const campaignId = Number(params.campaignId);
   const validId = Number.isInteger(campaignId) && campaignId > 0;
   const [state, setState] = React.useState<LoadState>({ status: "loading" });
-  const [businessName, setBusinessName] = React.useState("Kek Kak Nora");
+  const [businessName, setBusinessName] = React.useState("KK Kopitiam");
   useScrollToHash(state.status === "ready");
 
   React.useEffect(() => {

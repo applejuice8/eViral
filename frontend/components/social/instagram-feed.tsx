@@ -234,7 +234,7 @@ export function InstagramFeed() {
         </div>
 
         <p className="mt-8 text-[11px] leading-relaxed text-gray-400">
-          Mock UI for demo purposes only · Kek Kak Nora · eViral
+          Mock UI for demo purposes only · KK Kopitiam · eViral
         </p>
       </aside>
     </div>

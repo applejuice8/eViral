@@ -155,7 +155,7 @@ export function PostPreviewCard({
               aria-label="Hashtags"
               value={tags}
               onChange={(e) => setTags(e.target.value)}
-              placeholder="#KekKakNora #KekLapis"
+              placeholder="#KKKopitiam #KekLapis"
               className="h-8 text-xs"
             />
             <div className="flex justify-end gap-2">

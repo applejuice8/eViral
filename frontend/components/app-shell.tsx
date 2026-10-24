@@ -21,7 +21,7 @@ interface Owner {
 }
 
 // Shown until /summary answers (and if the backend is down).
-const FALLBACK_OWNER: Owner = { name: "Aisha Rahman", business: "Kek Kak Nora" };
+const FALLBACK_OWNER: Owner = { name: "Aisha Rahman", business: "KK Kopitiam" };
 const TAGLINE = "Home bakery · Halal certified";
 
 function useOwner(): Owner {

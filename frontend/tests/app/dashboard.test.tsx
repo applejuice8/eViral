@@ -14,7 +14,7 @@ vi.mock("next/image", () => ({
 }));
 
 const SUMMARY = {
-  business_name: "Kek Kak Nora",
+  business_name: "KK Kopitiam",
   owner_name: "Aisha Rahman",
   scheduled: 11,
   posted: 1,

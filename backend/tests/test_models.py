@@ -26,7 +26,7 @@ def test_ensure_owner_seeds_business_and_owner_once(db):
 
     assert owner.id == again.id
     assert owner.name == "Aisha Rahman"
-    assert owner.business.name == "Kek Kak Nora"
+    assert owner.business.name == "KK Kopitiam"
     assert owner.business.halal_certified is True
     assert owner.business.languages == ["ms", "en"]
     assert db.scalar(select(func.count()).select_from(Business)) == 1

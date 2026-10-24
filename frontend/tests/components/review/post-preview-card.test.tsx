@@ -22,7 +22,7 @@ const POST: Post = {
   platform: "instagram",
   stage: "launch",
   caption: "It's here! RM65 sebiji.",
-  hashtags: ["#KekKakNora", "#KekLapis"],
+  hashtags: ["#KKKopitiam", "#KekLapis"],
   video_idea: null,
   image_url: "/media/stage_a.png",
   uses_original_image: false,
@@ -45,10 +45,10 @@ afterEach(() => vi.restoreAllMocks());
 
 describe("PostPreviewCard", () => {
   it("shows the real image, Malaysia time and hashtags on their own line", () => {
-    render(<PostPreviewCard post={POST} businessName="Kek Kak Nora" onChange={() => {}} />);
+    render(<PostPreviewCard post={POST} businessName="KK Kopitiam" onChange={() => {}} />);
     expect(screen.getByAltText("Post image")).toHaveAttribute("src", "/backend/media/stage_a.png");
     expect(screen.getByText("Tue 27 Oct, 8:00 PM")).toBeInTheDocument();
-    expect(screen.getByTestId("hashtags")).toHaveTextContent("#KekKakNora #KekLapis");
+    expect(screen.getByTestId("hashtags")).toHaveTextContent("#KKKopitiam #KekLapis");
     expect(screen.getByText("Scheduled")).toBeInTheDocument();
     expect(screen.getByText("Instagram · Launch")).toBeInTheDocument();
   });
@@ -58,7 +58,7 @@ describe("PostPreviewCard", () => {
     const fetchMock = respond(updated);
     global.fetch = fetchMock as unknown as typeof fetch;
     const onChange = vi.fn();
-    render(<PostPreviewCard post={POST} businessName="Kek Kak Nora" onChange={onChange} />);
+    render(<PostPreviewCard post={POST} businessName="KK Kopitiam" onChange={onChange} />);
 
     fireEvent.click(screen.getByTitle("Click to edit this caption"));
     fireEvent.change(screen.getByLabelText("Caption"), { target: { value: "New caption" } });
@@ -87,7 +87,7 @@ describe("PostPreviewCard", () => {
     const fetchMock = respond(posted);
     global.fetch = fetchMock as unknown as typeof fetch;
     const onChange = vi.fn();
-    render(<PostPreviewCard post={POST} businessName="Kek Kak Nora" onChange={onChange} />);
+    render(<PostPreviewCard post={POST} businessName="KK Kopitiam" onChange={onChange} />);
 
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /publish now/i }));
@@ -101,7 +101,7 @@ describe("PostPreviewCard", () => {
     render(
       <PostPreviewCard
         post={{ ...POST, status: "posted", posted_at: "2026-10-24T02:00:00Z", published_url: "/instagram#post-5" }}
-        businessName="Kek Kak Nora"
+        businessName="KK Kopitiam"
         onChange={() => {}}
       />
     );
@@ -115,7 +115,7 @@ describe("PostPreviewCard", () => {
 
   it("shows the server error when publishing fails", async () => {
     global.fetch = respond({ detail: "Only scheduled posts can be published" }, 409) as unknown as typeof fetch;
-    render(<PostPreviewCard post={POST} businessName="Kek Kak Nora" onChange={() => {}} />);
+    render(<PostPreviewCard post={POST} businessName="KK Kopitiam" onChange={() => {}} />);
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /publish now/i }));
     });
