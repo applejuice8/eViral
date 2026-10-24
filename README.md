@@ -23,7 +23,7 @@
 | Live Demo | https://e-viral.replit.app/ |
 | RunPod Endpoint | Not used by this project |
 | Slide Deck | https://canva.link/llwqlbmn0jyeccs |
-| Demo Video | To be provided |
+| Demo Video | https://youtu.be/bwdSto_UxfE |
 
 ---
 
@@ -199,7 +199,7 @@ RunPod is not used for this project.
 
 - [x] Team name, domain (Domain 1 / Domain 2) and SDG track filled in
 - [x] Slide deck link added
-- [ ] Demo video link added
+- [x] Demo video link added
 - [x] Replit used, with proof of use in `submission/`
 - [x] RunPod used, with proof of use in `submission/` (Not Used -> No AI Training Performed)
 - [x] Preliminary submission completed (`SDC2026_TeamName_Preliminary.pdf`)
